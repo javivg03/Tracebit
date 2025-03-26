@@ -1,0 +1,12 @@
+/* Custom Styles */
+body {
+  font-family: "Segoe UI", sans-serif;
+}
+
+.card-title {
+  text-transform: capitalize;
+}
+
+pre {
+  white-space: pre-wrap;
+}
