@@ -6,7 +6,7 @@ from services.serper import buscar_en_google
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from scraping.instagram import scrape_profile
+from scraping.instagram import extraer_datos_relevantes
 from exports.exporter import export_to_excel
 from fastapi.responses import JSONResponse
 from services.history import guardar_historial
@@ -27,34 +27,26 @@ def root():
 @app.post("/scrape/instagram")
 def instagram_scraper(username: str):
     try:
-        data = scrape_profile(username)
+        data = extraer_datos_relevantes(username)
+
+        # Exportar directamente
         filename = f"exports/{username}.xlsx"
         export_to_excel([data], filename)
-        guardar_historial("Instagram", username, "Éxito")
 
-        # 🔁 ENVIAR A N8N DESPUÉS DE SCRAPEAR
-        try:
-            response = requests.post(
-                "http://localhost:5678/webhook/scraping-instagram",
-                json=data,
-                timeout=5
-            )
-            if response.status_code != 200:
-                print("⚠️ Fallo al enviar datos a n8n:", response.text)
-        except Exception as e:
-            print("❌ Error al contactar con n8n:", str(e))
+        # Guardar historial
+        guardar_historial("Instagram", username, "Éxito")
 
         return {
             "data": data,
             "excel_path": f"/download/{username}.xlsx"
         }
+
     except Exception as e:
         guardar_historial("Instagram", username, f"Error: {str(e)}")
         return JSONResponse(
             status_code=400,
             content={"error": f"No se pudo scrapear el perfil: {str(e)}"}
         )
-
 
 
 @app.post("/scrape/telegram")
@@ -133,8 +125,7 @@ def descargar_historial_xlsx():
 def buscar_google(query: str):
     try:
         resultados = buscar_en_google(query)
-        return {
-            "resultados": resultados.get("organic", [])[:5]
-        }
+        return {"resultados": resultados}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+

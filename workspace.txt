@@ -1,0 +1,20 @@
+fct_scraper_backend/
+├── app.py
+├── scraping/
+│   ├── instagram.py
+│   └── telegram.py
+├── exports/
+│   └── exporter.py
+├── services/
+│   ├── history.py
+│   └── validator.py
+├── static/
+│   └── css/
+│       └── style.css
+│   └── js/
+│       └── main.js
+│   └── index.html
+├── requirements.txt
+├── workspace.txt
+├── README.md
+├── .env

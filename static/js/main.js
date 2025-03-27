@@ -35,7 +35,6 @@ async function scrapear() {
   link.download = json.excel_path.split("/").pop();
   document.getElementById("descarga").style.display = "block";
 }
-
 async function buscarGoogle() {
   const q = document.getElementById("busqueda").value;
   const res = await fetch(`/buscar_google?query=${encodeURIComponent(q)}`);
