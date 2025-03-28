@@ -1,22 +1,29 @@
 import csv
 import os
 import requests
+import re
 import pandas as pd
-from services.serper import buscar_en_google
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
+from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+from scraping.web import buscar_por_keyword
 from scraping.instagram import extraer_datos_relevantes
 from exports.exporter import export_to_excel
-from fastapi.responses import JSONResponse
 from services.history import guardar_historial
 from scraping.telegram import scrape_telegram
+from scraping.youtube import scrape_youtube
+
 
 app = FastAPI()
 
 # Servir carpeta static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Modelo de entrada
+class UserInput(BaseModel):
+    username: str
 
 # SERVIR EL HTML EN LA RAÍZ /
 @app.get("/")
@@ -25,44 +32,60 @@ def root():
 
 
 @app.post("/scrape/instagram")
-def instagram_scraper(username: str):
+def instagram_scraper(data: UserInput = Body(...)):
+    username = data.username
     try:
         data = extraer_datos_relevantes(username)
-
-        # Exportar directamente
         filename = f"exports/{username}.xlsx"
         export_to_excel([data], filename)
-
-        # Guardar historial
         guardar_historial("Instagram", username, "Éxito")
-
-        return {
-            "data": data,
-            "excel_path": f"/download/{username}.xlsx"
-        }
-
+        return {"data": data, "excel_path": f"/download/{username}.xlsx"}
     except Exception as e:
         guardar_historial("Instagram", username, f"Error: {str(e)}")
-        return JSONResponse(
-            status_code=400,
-            content={"error": f"No se pudo scrapear el perfil: {str(e)}"}
-        )
+        return JSONResponse(status_code=400, content={"error": f"No se pudo scrapear el perfil: {str(e)}"})
 
 
 @app.post("/scrape/telegram")
-def telegram_scraper(username: str):
+def telegram_scraper(data: UserInput = Body(...)):
+    username = data.username
     try:
         data = scrape_telegram(username)
         filename = f"exports/telegram_{username}.xlsx"
         export_to_excel([data], filename)
         guardar_historial("Telegram", username, "Éxito")
-        return {
-            "data": data,
-            "excel_path": f"/download/telegram_{username}.xlsx"
-        }
+        return {"data": data, "excel_path": f"/download/telegram_{username}.xlsx"}
     except Exception as e:
         guardar_historial("Telegram", username, f"Error: {str(e)}")
         return JSONResponse(status_code=400, content={"error": "No se pudo scrapear el canal."})
+
+
+
+@app.post("/scrape/youtube")
+def youtube_scraper(data: UserInput = Body(...)):
+    username = data.username
+    try:
+        data = scrape_youtube(username)
+        filename = f"exports/youtube_{username}.xlsx"
+        export_to_excel([data], filename)
+        guardar_historial("YouTube", username, "Éxito")
+        return {"data": data, "excel_path": f"/download/youtube_{username}.xlsx"}
+    except Exception as e:
+        guardar_historial("YouTube", username, f"Error: {str(e)}")
+        return JSONResponse(status_code=400, content={"error": "No se pudo scrapear el canal."})
+
+
+@app.post("/scrape/web")
+def web_scraper(data: UserInput = Body(...)):
+    username = data.username
+    try:
+        resultados = buscar_por_keyword(username)
+        filename = f"exports/web_{username.replace(' ', '_')}.xlsx"
+        export_to_excel(resultados, filename)
+        guardar_historial("Web", username, "Éxito")
+        return {"data": resultados, "excel_path": f"/download/web_{username.replace(' ', '_')}.xlsx"}
+    except Exception as e:
+        guardar_historial("Web", username, f"Error: {str(e)}")
+        return JSONResponse(status_code=400, content={"error": f"No se pudo realizar la búsqueda web: {str(e)}"})
 
 
 @app.get("/download/{filename}")
@@ -95,8 +118,6 @@ def borrar_historial():
 
 
 @app.get("/descargar/historial.csv")
-
-
 def descargar_historial_csv():
     filepath = "exports/historial.csv"
     if not os.path.exists(filepath):
@@ -112,20 +133,9 @@ def descargar_historial_xlsx():
     if not os.path.exists(csv_path):
         return JSONResponse(status_code=404, content={"error": "No hay historial disponible"})
 
-    # Convertir CSV a XLSX solo si no existe o si está desactualizado
     if not os.path.exists(xlsx_path) or os.path.getmtime(csv_path) > os.path.getmtime(xlsx_path):
         df = pd.read_csv(csv_path)
         df.to_excel(xlsx_path, index=False)
 
     return FileResponse(xlsx_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         filename="historial.xlsx")
-
-
-@app.get("/buscar_google")
-def buscar_google(query: str):
-    try:
-        resultados = buscar_en_google(query)
-        return {"resultados": resultados}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-

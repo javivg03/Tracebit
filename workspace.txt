@@ -2,11 +2,14 @@ fct_scraper_backend/
 ├── app.py
 ├── scraping/
 │   ├── instagram.py
+│   ├── youtube.py
+│   ├── web.py
 │   └── telegram.py
 ├── exports/
 │   └── exporter.py
 ├── services/
 │   ├── history.py
+│   ├── busqueda_cruzada.py
 │   └── validator.py
 ├── static/
 │   └── css/

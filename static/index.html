@@ -10,39 +10,33 @@
 <div class="container py-5">
   <h1 class="mb-4">🔍 Scraper Multiplataforma</h1>
 
-  <!-- Scraping directo -->
+  <!-- Formulario principal -->
   <div class="mb-4">
     <label class="form-label">Plataforma:</label>
     <select id="plataforma" class="form-select w-auto">
       <option value="instagram">Instagram</option>
       <option value="telegram">Telegram</option>
+      <option value="youtube">YouTube</option>
+      <option value="web">Web (Keyword)</option>
+
+      <!-- Se añadirán más plataformas aquí (YouTube, Webs, etc.) -->
     </select>
 
     <input type="text" id="username" class="form-control my-2" placeholder="Nombre de usuario o canal">
     <button class="btn btn-primary" onclick="scrapear()">Buscar y Scrapear</button>
   </div>
-<!-- Spinner de carga -->
-<div id="loader" class="text-center my-3" style="display: none;">
-  <div class="spinner-border text-primary" role="status">
-    <span class="visually-hidden">Cargando...</span>
+
+  <!-- Spinner de carga -->
+  <div id="loader" class="text-center my-3" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
   </div>
-</div>
 
-
-  <!-- Resultado scraping -->
+  <!-- Resultado del scraping -->
   <div id="resultado" class="bg-white p-3 border rounded"></div>
   <div id="descarga" style="display: none;">
     <a id="link-descarga" class="btn btn-success" href="" download>📥 Descargar Excel</a>
-  </div>
-
-  <hr>
-
-  <!-- Búsqueda con Serper -->
-  <div class="mt-4">
-    <h3>🌐 Búsqueda inteligente en Google (Serper)</h3>
-    <input type="text" id="busqueda" class="form-control my-2" placeholder="Ej: entrenador valencia instagram">
-    <button class="btn btn-secondary" onclick="buscarGoogle()">Buscar</button>
-    <div id="resultados-google" class="mt-3"></div>
   </div>
 
   <hr class="my-5">
