@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 
 from services.validator import extraer_emails, extraer_telefonos
-from services.busqueda_cruzada import buscar_email
 
 def scrape_telegram(channel_username):
     url = f"https://t.me/s/{channel_username}"
@@ -30,14 +29,7 @@ def scrape_telegram(channel_username):
     telefonos = extraer_telefonos(raw_text)
     telefono = telefonos[0] if telefonos else None
 
-    # 🔁 Si no hay email, buscar por nombre real
-    origen = "bio"
-    if not email:
-        nombre_completo = title.text.strip() if title else None
-        resultado = buscar_email(channel_username, nombre_completo)
-        email = resultado["email"]
-        email_fuente = resultado["url_fuente"]
-        origen = resultado["origen"]
+    origen = "bio" if email else "no_email"
 
     return {
         "username": channel_username,

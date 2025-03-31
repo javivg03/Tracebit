@@ -1,66 +1,96 @@
-import instaloader
-from services.busqueda_cruzada import buscar_email
-from services.validator import extraer_emails, extraer_telefonos
+from fastapi import FastAPI, Body
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import os
+import pandas as pd
 
-def extraer_datos_relevantes(username):
-    # Inicializar Instaloader
-    insta_loader = instaloader.Instaloader()
+from scraping.instagram import extraer_datos_relevantes
+from scraping.telegram import scrape_telegram
+from scraping.youtube import scrape_youtube
+from scraping.facebook import scrape_facebook
+from scraping.tiktok import scrape_tiktok
+from scraping.x import scrape_x
+from scraping.web import buscar_por_keyword
+from services.history import guardar_historial
+from exports.exporter import export_to_excel
 
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+class UserInput(BaseModel):
+    username: str
+
+@app.get("/")
+def root():
+    return FileResponse("static/index.html")
+
+# ====== FUNCIÓN REUTILIZABLE CON BÚSQUEDA CRUZADA ======
+
+def procesar_scraper(nombre: str, username: str, funcion_scraper):
     try:
-        insta_loader.load_session_from_file("pruebasrc1")
-        print("✅ Sesión cargada correctamente.")
-    except Exception as e:
-        print(f"⚠️ No se pudo cargar la sesión: {e}")
+        datos = funcion_scraper(username)
 
-    # Obtener perfil
-    try:
-        profile = instaloader.Profile.from_username(insta_loader.context, username)
-    except Exception as e:
-        print(f"❌ Error al obtener el perfil de Instagram: {e}")
+        if not datos:
+            raise Exception("El scraper no devolvió resultados")
+
+        # Si no se encontró email, activar búsqueda cruzada
+        if not datos.get("email"):
+            from services.busqueda_cruzada import buscar_email  # Import dinámico
+            resultado = buscar_email(username, datos.get("nombre"))
+            datos.update({
+                "email": resultado["email"],
+                "fuente_email": resultado["url_fuente"],
+                "origen": resultado["origen"]
+            })
+
+        filename = f"exports/{nombre.lower()}_{username}.xlsx"
+        export_to_excel([datos], filename)
+        guardar_historial(nombre, username, "Éxito")
         return {
-            "nombre": None,
-            "usuario": username,
-            "email": None,
-            "fuente_email": None,
-            "telefono": None,
-            "seguidores": None,
-            "seguidos": None,
-            "hashtags": [],
-            "origen": "error"
+            "data": datos,
+            "excel_path": f"/download/{nombre.lower()}_{username}.xlsx"
         }
 
-    # Extraer datos visibles
-    nombre = profile.full_name
-    bio = profile.biography or ""
-    seguidores = profile.followers
-    seguidos = profile.followees
-    hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
+    except Exception as e:
+        guardar_historial(nombre, username, f"Error: {str(e)}")
+        return JSONResponse(status_code=400, content={"error": f"No se pudo scrapear {nombre}: {str(e)}"})
 
-    # 📩 Email y ☎️ Teléfono desde la bio
-    emails = extraer_emails(bio)
-    email = emails[0] if emails else None
-    email_fuente = "bio" if email else None
+# ============ ENDPOINTS DE SCRAPING ==============
 
-    telefonos = extraer_telefonos(bio)
-    telefono = telefonos[0] if telefonos else None
+@app.post("/scrape/instagram")
+def instagram_scraper(data: UserInput = Body(...)):
+    return procesar_scraper("Instagram", data.username, extraer_datos_relevantes)
 
-    # 🔁 Búsqueda cruzada si no hay email en bio
-    if not email:
-        resultado_busqueda = buscar_email(username, nombre)
-        email = resultado_busqueda["email"]
-        email_fuente = resultado_busqueda["url_fuente"]
-        origen = resultado_busqueda["origen"]
-    else:
-        origen = "bio"
+@app.post("/scrape/telegram")
+def telegram_scraper(data: UserInput = Body(...)):
+    return procesar_scraper("Telegram", data.username, scrape_telegram)
 
-    return {
-        "nombre": nombre,
-        "usuario": username,
-        "email": email,
-        "fuente_email": email_fuente,
-        "telefono": telefono,
-        "seguidores": seguidores,
-        "seguidos": seguidos,
-        "hashtags": hashtags,
-        "origen": origen
-    }
+@app.post("/scrape/youtube")
+def youtube_scraper(data: UserInput = Body(...)):
+    return procesar_scraper("YouTube", data.username, scrape_youtube)
+
+@app.post("/scrape/facebook")
+def facebook_scraper(data: UserInput = Body(...)):
+    return procesar_scraper("Facebook", data.username, scrape_facebook)
+
+@app.post("/scrape/tiktok")
+def tiktok_scraper(data: UserInput = Body(...)):
+    return procesar_scraper("TikTok", data.username, scrape_tiktok)
+
+@app.post("/scrape/x")
+def x_scraper(data: UserInput = Body(...)):
+    return procesar_scraper("X", data.username, scrape_x)
+
+@app.post("/scrape/web")
+def web_scraper(data: UserInput = Body(...)):
+    username = data.username
+    try:
+        resultados = buscar_por_keyword(username)
+        filename = f"exports/web_{username.replace(' ', '_')}.xlsx"
+        export_to_excel(resultados, filename)
+        guardar_historial("Web", username, "Éxito")
+        return {"data": resultados, "excel_path": f"/download/web_{username.replace(' ', '_')}.xlsx"}
+    except Exception as e:
+        guardar_historial("Web", username, f"Error: {str(e)}")
+        return JSONResponse(status_code=400, content={"error": str(e)})

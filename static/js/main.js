@@ -8,17 +8,10 @@ async function scrapear() {
   document.getElementById("loader").style.display = "block";
   document.getElementById("descarga").style.display = "none";
 
-  console.log("📡 Enviando:", {
-    plataforma,
-    body: JSON.stringify({ username })
-  });
-
   try {
     const res = await fetch(`/scrape/${plataforma}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username })
     });
 
@@ -31,9 +24,6 @@ async function scrapear() {
       return;
     }
 
-    const json = await res.json();
-    console.log("📦 Respuesta:", json);
-
     const data = json.data;
     const resultadoDiv = document.getElementById("resultado");
 
@@ -42,7 +32,6 @@ async function scrapear() {
       return;
     }
 
-    // Si es un array de resultados (web scraping)
     if (Array.isArray(data)) {
       if (data.length === 0) {
         resultadoDiv.innerHTML = "<p>No se encontraron resultados.</p>";
@@ -55,8 +44,9 @@ async function scrapear() {
           <div class="card mb-2">
             <div class="card-body">
               <h5 class="card-title">${r.title || r.titulo || "Resultado"}</h5>
-              <p class="card-text">${r.snippet || ""}</p>
-              <p><strong>Email encontrado:</strong> ${r.email || "N/A"}</p>
+              <p class="card-text">${r.snippet || r.resumen || ""}</p>
+              <p><strong>Emails:</strong> ${(r.emails || [r.email] || []).join(", ") || "N/A"}</p>
+              <p><strong>Teléfonos:</strong> ${(r.telefonos || []).join(", ") || "N/A"}</p>
               <a href="${r.link || r.url || "#"}" target="_blank" class="btn btn-outline-primary">Ver enlace</a>
             </div>
           </div>`;
@@ -64,7 +54,6 @@ async function scrapear() {
 
       resultadoDiv.innerHTML = html;
     } else {
-      // Objeto único (Instagram, Telegram, YouTube, etc.)
       let html = `<div class="card p-3"><h5 class="card-title">${data.nombre || data.usuario || "Usuario"}</h5><ul class="list-group list-group-flush">`;
 
       for (const key in data) {
@@ -78,7 +67,6 @@ async function scrapear() {
       resultadoDiv.innerHTML = html;
     }
 
-    // Mostrar botón de descarga
     const link = document.getElementById("link-descarga");
     link.href = json.excel_path;
     link.download = json.excel_path.split("/").pop();
@@ -144,10 +132,7 @@ async function verHistorial() {
 async function borrarHistorial() {
   if (!confirm("¿Seguro que quieres borrar todo el historial?")) return;
 
-  const res = await fetch("/historial", {
-    method: "DELETE"
-  });
-
+  const res = await fetch("/historial", { method: "DELETE" });
   const data = await res.json();
   alert(data.message);
   document.getElementById("historial-container").style.display = "none";

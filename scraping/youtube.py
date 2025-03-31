@@ -1,6 +1,5 @@
 from playwright.sync_api import sync_playwright
 from services.validator import extraer_emails, extraer_telefonos
-from services.busqueda_cruzada import buscar_email
 
 def scrape_youtube(username):
     with sync_playwright() as p:
@@ -37,19 +36,12 @@ def scrape_youtube(username):
             # 📩 Email y ☎️ Teléfono
             emails = extraer_emails(descripcion)
             email = emails[0] if emails else None
-            email_fuente = "bio" if email else None
+            email_fuente = url if email else None
 
             telefonos = extraer_telefonos(descripcion)
             telefono = telefonos[0] if telefonos else None
 
-            # 🔁 Búsqueda cruzada si no se encuentra email
-            if not email:
-                resultado = buscar_email(username, nombre)
-                email = resultado["email"]
-                email_fuente = resultado["url_fuente"]
-                origen = resultado["origen"]
-            else:
-                origen = "bio"
+            origen = "bio" if email else "no_email"
 
             # 🌐 Extraer enlaces externos que no sean de YouTube
             enlaces = []

@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 from services.validator import extraer_emails, extraer_telefonos
-from services.busqueda_cruzada import buscar_email
 
 def scrape_facebook(username_o_nombre):
     print(f"🚀 Iniciando scraping de Facebook con Playwright para: {username_o_nombre}")
@@ -52,13 +51,12 @@ def scrape_facebook(username_o_nombre):
 
         browser.close()
 
-    # 🔁 Si no se encontró nada, usar búsqueda cruzada
-
+    # ❌ No se encontró email directo → se devuelve sin email y luego lo maneja `buscar_email`
     return {
         "nombre": username_o_nombre,
         "usuario": username_o_nombre,
-        "email": resultado["email"],
-        "fuente_email": resultado["url_fuente"],
+        "email": None,
+        "fuente_email": None,
         "telefono": None,
-        "origen": resultado["origen"]
+        "origen": "no_email"
     }

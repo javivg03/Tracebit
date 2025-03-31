@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 from services.validator import extraer_emails, extraer_telefonos
-from services.busqueda_cruzada import buscar_email
 
 def scrape_tiktok(entrada):
     print(f"🚀 Iniciando scraping de TikTok con Playwright para: {entrada}")
@@ -31,35 +30,24 @@ def scrape_tiktok(entrada):
                 except PlaywrightTimeoutError:
                     bio = ""
 
-                # Obtener HTML completo (por si queremos más adelante scraping visual)
+                # HTML y nombre
                 html = page.content()
                 soup = BeautifulSoup(html, "html.parser")
-
-                # Nombre del perfil
                 nombre_tag = soup.find("h2")
                 nombre = nombre_tag.get_text(strip=True) if nombre_tag else entrada
 
-                # 📩 Email y ☎️ teléfono
+                # 📩 Email y ☎️ Teléfono
                 emails = extraer_emails(bio)
                 email = emails[0] if emails else None
+                fuente_email = url if email else None
 
                 telefonos = extraer_telefonos(bio)
                 telefono = telefonos[0] if telefonos else None
 
-                # 🏷️ Hashtags
-                hashtags = []
-                if bio:
-                    hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
+                # Hashtags
+                hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")] if bio else []
 
-                if not email:
-                    print("🔁 No se encontró email directo, probando búsqueda cruzada...")
-                    resultado = buscar_email(entrada, nombre)
-                    email = resultado["email"]
-                    fuente_email = resultado["url_fuente"]
-                    origen = resultado["origen"]
-                else:
-                    fuente_email = url
-                    origen = "bio"
+                origen = "bio" if email else "no_email"
 
                 browser.close()
                 return {

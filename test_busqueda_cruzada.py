@@ -1,8 +1,8 @@
 from services.busqueda_cruzada import buscar_email
 
 # 🔁 Puedes cambiar el username y el nombre real para probar distintos perfiles
-username = "joanpradells"
-nombre_real = ""
+username = ""
+nombre_real = "Joan Pradells"
 
 resultado = buscar_email(username, nombre_real)
 

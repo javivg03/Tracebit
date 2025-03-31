@@ -1,7 +1,7 @@
 from scraping.instagram import extraer_datos_relevantes
 
 # Reemplaza con un perfil público real para probar
-username = "sofig.oficial"  # Ejemplo, puedes cambiarlo por otro
+username = "joanpradells"  # Ejemplo, puedes cambiarlo por otro
 
 datos = extraer_datos_relevantes(username)
 

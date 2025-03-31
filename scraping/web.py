@@ -11,8 +11,11 @@ def buscar_por_keyword(keyword: str, max_results=10):
     with DDGS() as ddgs:
         search_results = ddgs.text(f"{keyword} contacto email", region="es-es", safesearch="Moderate", max_results=max_results)
 
-        for resultado in search_results:
-            url = resultado.get("href") or resultado.get("url")
+        for item in search_results:
+            url = item.get("href") or item.get("url")
+            titulo = item.get("title", "Sin título")
+            resumen = item.get("body", "Sin resumen disponible.")
+
             if not url:
                 continue
 
@@ -28,14 +31,14 @@ def buscar_por_keyword(keyword: str, max_results=10):
                 emails = extraer_emails(texto)
                 telefonos = extraer_telefonos(texto)
 
-                # Solo incluir resultados con al menos un dato útil
                 if emails or telefonos:
                     resultados.append({
-                        "titulo": resultado.get("title", "Sin título"),
+                        "titulo": titulo,
                         "link": url,
-                        "resumen": resultado.get("body", "Sin resumen disponible."),
+                        "resumen": resumen,
                         "emails": emails,
-                        "telefonos": telefonos
+                        "telefonos": telefonos,
+                        "origen": "duckduckgo"
                     })
 
                 if len(resultados) >= max_results:
@@ -45,4 +48,5 @@ def buscar_por_keyword(keyword: str, max_results=10):
                 print(f"⚠️ Error en {url}: {e}")
                 continue
 
+    print(f"✅ Resultados útiles encontrados: {len(resultados)}")
     return resultados
