@@ -1,23 +1,15 @@
 import instaloader
-import re
-from services.busqueda_cruzada import buscar_email
-from services.validator import validar_email, validar_telefono
-
-EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
-PHONE_REGEX = r"\+?\d[\d\s().-]{7,}"
+from services.validator import extraer_emails, extraer_telefonos
 
 def extraer_datos_relevantes(username):
-    # Inicializar Instaloader
     insta_loader = instaloader.Instaloader()
 
-    # Intentar cargar la sesión guardada
     try:
-        insta_loader.load_session_from_file("pruebasrc1")  # Cambia esto por tu usuario si es otro
+        insta_loader.load_session_from_file("pruebasrc1")
         print("✅ Sesión cargada correctamente.")
     except Exception as e:
         print(f"⚠️ No se pudo cargar la sesión: {e}")
 
-    # Obtener perfil
     try:
         profile = instaloader.Profile.from_username(insta_loader.context, username)
     except Exception as e:
@@ -34,39 +26,20 @@ def extraer_datos_relevantes(username):
             "origen": "error"
         }
 
-    # Extraer datos visibles
     nombre = profile.full_name
-    bio = profile.biography
+    bio = profile.biography or ""
     seguidores = profile.followers
     seguidos = profile.followees
-    hashtags = re.findall(r"#(\w+)", bio)
+    hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
 
-    # Buscar email en la bio
-    email = None
-    email_fuente = None
-    matches_email = re.findall(EMAIL_REGEX, bio)
-    for e in matches_email:
-        if validar_email(e):
-            email = e
-            email_fuente = "bio"
-            break
+    emails = extraer_emails(bio)
+    email = emails[0] if emails else None
+    email_fuente = "bio" if email else None
 
-    # Buscar teléfono en bio
-    telefono = None
-    matches_tel = re.findall(PHONE_REGEX, bio)
-    for tel in matches_tel:
-        if validar_telefono(tel):
-            telefono = tel
-            break
+    telefonos = extraer_telefonos(bio)
+    telefono = telefonos[0] if telefonos else None
 
-    # Búsqueda cruzada si no hay email
-    if not email:
-        resultado_busqueda = buscar_email(username, nombre)
-        email = resultado_busqueda["email"]
-        email_fuente = resultado_busqueda["url_fuente"]
-        origen = resultado_busqueda["origen"]
-    else:
-        origen = "bio"
+    origen = "bio" if email else "no_email"
 
     return {
         "nombre": nombre,

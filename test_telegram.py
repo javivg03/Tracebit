@@ -1,7 +1,6 @@
 from scraping.telegram import scrape_telegram
 
-# Cambia este nombre por el del canal que quieras probar
-canal = "chollometro"  # Ejemplo de canal real
+canal = "spremium"
 
 datos = scrape_telegram(canal)
 

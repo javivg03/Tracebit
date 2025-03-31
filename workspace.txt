@@ -4,6 +4,8 @@ fct_scraper_backend/
 │   ├── instagram.py
 │   ├── youtube.py
 │   ├── web.py
+│   ├── facebook.py
+│   ├── x.py
 │   └── telegram.py
 ├── exports/
 │   └── exporter.py

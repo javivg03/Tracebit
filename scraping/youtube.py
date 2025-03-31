@@ -1,10 +1,6 @@
 from playwright.sync_api import sync_playwright
-import re
-from services.validator import validar_email, validar_telefono
-from services.busqueda_cruzada import buscar_email  # Aquí podrías integrar más adelante la búsqueda de teléfonos
-
-EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
-PHONE_REGEX = r"\+?\d[\d\s().-]{7,}"
+from services.validator import extraer_emails, extraer_telefonos
+from services.busqueda_cruzada import buscar_email
 
 def scrape_youtube(username):
     with sync_playwright() as p:
@@ -17,7 +13,7 @@ def scrape_youtube(username):
             print(f"🌐 Navegando a {url}")
             page.goto(url, timeout=60000)
 
-            # Aceptar cookies
+            # Aceptar cookies si aparecen
             try:
                 page.wait_for_timeout(3000)
                 boton = page.locator("button:has-text('Aceptar todo')").first
@@ -29,33 +25,24 @@ def scrape_youtube(username):
 
             page.wait_for_timeout(3000)
 
-            # Extraer nombre del canal desde el título
+            # Título de la página como nombre del canal
             nombre = page.title().replace(" - YouTube", "")
 
-            # Extraer bio/descripción
-            descripcion = ""
+            # Descripción del canal (bio)
             try:
                 descripcion = page.locator("#description-container").inner_text()
             except:
-                pass
+                descripcion = ""
 
-            # Buscar email en la descripción
-            email = None
-            email_fuente = None
-            matches_email = re.findall(EMAIL_REGEX, descripcion)
-            for e in matches_email:
-                if validar_email(e):
-                    email = e
-                    email_fuente = "bio"
-                    break
+            # 📩 Email y ☎️ Teléfono
+            emails = extraer_emails(descripcion)
+            email = emails[0] if emails else None
+            email_fuente = "bio" if email else None
 
-            # Buscar teléfono en la descripción
-            telefono = None
-            matches_tel = re.findall(PHONE_REGEX, descripcion)
-            if matches_tel:
-                telefono = validar_telefono(matches_tel[0])
+            telefonos = extraer_telefonos(descripcion)
+            telefono = telefonos[0] if telefonos else None
 
-            # Si no hay email → búsqueda cruzada
+            # 🔁 Búsqueda cruzada si no se encuentra email
             if not email:
                 resultado = buscar_email(username, nombre)
                 email = resultado["email"]
@@ -64,7 +51,7 @@ def scrape_youtube(username):
             else:
                 origen = "bio"
 
-            # Buscar enlaces externos (que no sean de YouTube)
+            # 🌐 Extraer enlaces externos que no sean de YouTube
             enlaces = []
             try:
                 links = page.locator("a[href^='http']").all()

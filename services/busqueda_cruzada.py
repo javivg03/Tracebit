@@ -1,183 +1,203 @@
-import re
 import requests
 from bs4 import BeautifulSoup
-from services.validator import validar_email
-from googlesearch import search as google_search
 from urllib.parse import quote_plus
+from googlesearch import search as google_search
 from duckduckgo_search import DDGS
 
-EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
+from services.validator import extraer_emails
+from scraping.instagram import extraer_datos_relevantes as scrape_instagram
+from scraping.youtube import scrape_youtube
+from scraping.tiktok import scrape_tiktok
+from scraping.telegram import scrape_telegram
+from scraping.facebook import scrape_facebook
+from scraping.x import scrape_x
 
-# =====================================
-# SECCIÓN 1: Scraping directo en redes
-# =====================================
+# ===============================
+# FUNCIONES QUE USAN TUS SCRAPERS
+# ===============================
 
-def buscar_email_en_facebook(username, nombre_completo=None):
-    urls = [f"https://www.facebook.com/{username}"]
-
-    if nombre_completo:
-        nombre_codificado = quote_plus(nombre_completo)
-        urls.append(f"https://www.facebook.com/public?q={nombre_codificado}")
-
-    for url in urls:
-        try:
-            res = requests.get(url, timeout=5)
-            if res.status_code != 200:
-                continue
-            text = BeautifulSoup(res.text, "html.parser").get_text()
-            correos = re.findall(EMAIL_REGEX, text)
-            for correo in correos:
-                if validar_email(correo):
-                    return {"email": correo, "origen": "facebook", "url_fuente": url}
-        except Exception:
-            continue
+def buscar_email_en_instagram(username):
+    try:
+        resultado = scrape_instagram(username)
+        if resultado["email"]:
+            return {
+                "email": resultado["email"],
+                "origen": "instagram",
+                "url_fuente": resultado["fuente_email"]
+            }
+    except:
+        pass
     return None
 
-def buscar_email_en_twitter(username):
-    url = f"https://twitter.com/{username}"
+def buscar_email_en_youtube(username):
     try:
-        res = requests.get(url, timeout=5)
-        if res.status_code != 200:
-            return None
-        text = BeautifulSoup(res.text, "html.parser").get_text()
-        correos = re.findall(EMAIL_REGEX, text)
-        for correo in correos:
-            if validar_email(correo):
-                return {"email": correo, "origen": "twitter", "url_fuente": url}
-    except Exception:
-        return None
+        resultado = scrape_youtube(username)
+        if resultado["email"]:
+            return {
+                "email": resultado["email"],
+                "origen": "youtube",
+                "url_fuente": resultado["fuente_email"]
+            }
+    except:
+        pass
+    return None
+
+def buscar_email_en_tiktok(username):
+    try:
+        resultado = scrape_tiktok(username)
+        if resultado["email"]:
+            return {
+                "email": resultado["email"],
+                "origen": "tiktok",
+                "url_fuente": resultado["fuente_email"]
+            }
+    except:
+        pass
+    return None
+
+def buscar_email_en_telegram(username):
+    try:
+        resultado = scrape_telegram(username)
+        if resultado["email"]:
+            return {
+                "email": resultado["email"],
+                "origen": "telegram",
+                "url_fuente": resultado["fuente_email"]
+            }
+    except:
+        pass
+    return None
+
+def buscar_email_en_facebook(username):
+    try:
+        resultado = scrape_facebook(username)
+        if resultado["email"]:
+            return {
+                "email": resultado["email"],
+                "origen": "facebook",
+                "url_fuente": resultado["fuente_email"]
+            }
+    except:
+        pass
+    return None
+
+def buscar_email_en_x(username):
+    try:
+        resultado = scrape_x(username)
+        if resultado["email"] and resultado["email"] != "No encontrado":
+            return {
+                "email": resultado["email"],
+                "origen": "x",
+                "url_fuente": resultado["fuente_email"]
+            }
+    except:
+        pass
+    return None
+
+# ===============================
+# FUENTES EXTERNAS (NO SCRAPERS PROPIOS)
+# ===============================
 
 def buscar_email_en_github(username):
     url = f"https://github.com/{username}"
     try:
         res = requests.get(url, timeout=5)
-        if res.status_code != 200:
-            return None
-        text = BeautifulSoup(res.text, "html.parser").get_text()
-        correos = re.findall(EMAIL_REGEX, text)
-        for correo in correos:
-            if validar_email(correo):
-                return {"email": correo, "origen": "github", "url_fuente": url}
-    except Exception:
-        return None
+        if res.status_code == 200:
+            text = BeautifulSoup(res.text, "html.parser").get_text()
+            emails = extraer_emails(text)
+            if emails:
+                return {"email": emails[0], "origen": "github", "url_fuente": url}
+    except:
+        pass
+    return None
 
 def buscar_email_en_aboutme(username):
     url = f"https://about.me/{username}"
     try:
         res = requests.get(url, timeout=5)
-        if res.status_code != 200:
-            return None
-        text = BeautifulSoup(res.text, "html.parser").get_text()
-        correos = re.findall(EMAIL_REGEX, text)
-        for correo in correos:
-            if validar_email(correo):
-                return {"email": correo, "origen": "aboutme", "url_fuente": url}
-    except Exception:
-        return None
+        if res.status_code == 200:
+            text = BeautifulSoup(res.text, "html.parser").get_text()
+            emails = extraer_emails(text)
+            if emails:
+                return {"email": emails[0], "origen": "aboutme", "url_fuente": url}
+    except:
+        pass
+    return None
 
 def buscar_email_en_medium(username):
     url = f"https://medium.com/@{username}"
     try:
         res = requests.get(url, timeout=5)
-        if res.status_code != 200:
-            return None
-        text = BeautifulSoup(res.text, "html.parser").get_text()
-        correos = re.findall(EMAIL_REGEX, text)
-        for correo in correos:
-            if validar_email(correo):
-                return {"email": correo, "origen": "medium", "url_fuente": url}
-    except Exception:
-        return None
+        if res.status_code == 200:
+            text = BeautifulSoup(res.text, "html.parser").get_text()
+            emails = extraer_emails(text)
+            if emails:
+                return {"email": emails[0], "origen": "medium", "url_fuente": url}
+    except:
+        pass
+    return None
 
-# ====================================================
-# SECCIÓN 2: Búsqueda en DuckDuckGo
-# ====================================================
+# ===============================
+# MOTORES DE BÚSQUEDA EXTERNOS
+# ===============================
 
 def buscar_email_en_duckduckgo(query, max_urls=5):
-    print(f"🔍 Buscando con DuckDuckGo: {query}")
+    print(f"🔍 DuckDuckGo → {query}")
     with DDGS() as ddgs:
         resultados = ddgs.text(query, region="es-es", safesearch="Moderate", max_results=max_urls)
-        if not resultados:
-            return None
-
         for resultado in resultados:
             url = resultado.get("href") or resultado.get("url")
             if not url:
                 continue
             try:
-                print(f"🌐 Revisando: {url}")
                 html = requests.get(url, timeout=5).text
                 text = BeautifulSoup(html, "html.parser").get_text()
-                correos = re.findall(EMAIL_REGEX, text)
-                for correo in correos:
-                    if validar_email(correo):
-                        return {"email": correo, "url_fuente": url, "origen": "duckduckgo"}
-            except Exception:
+                emails = extraer_emails(text)
+                if emails:
+                    return {"email": emails[0], "url_fuente": url, "origen": "duckduckgo"}
+            except:
                 continue
     return None
 
-# ====================================================
-# SECCIÓN 3: Búsqueda en Google (última opción)
-# ====================================================
-
 def buscar_email_en_google(username, nombre_completo=None, max_urls=5):
-    if nombre_completo:
-        query = f'"{nombre_completo}" contacto OR email OR sitio web'
-    else:
-        query = f'"{username}" contacto OR email OR sitio web'
-
-    print(f"🔍 Búsqueda cruzada: {query}")
+    query = f'"{nombre_completo or username}" contacto OR email OR sitio web'
+    print(f"🔍 Google → {query}")
     resultados = google_search(query, num_results=max_urls, lang="es")
-
     for url in resultados:
         try:
-            print(f"🌐 Revisando: {url}")
             html = requests.get(url, timeout=5).text
             text = BeautifulSoup(html, "html.parser").get_text()
-            correos = re.findall(EMAIL_REGEX, text)
-            for correo in correos:
-                if validar_email(correo):
-                    return {"email": correo, "url_fuente": url, "origen": "google"}
-        except Exception:
+            emails = extraer_emails(text)
+            if emails:
+                return {"email": emails[0], "url_fuente": url, "origen": "google"}
+        except:
             continue
-
     return {"email": None, "url_fuente": None, "origen": "no_encontrado"}
 
-# ====================================================
-# SECCIÓN 4: Función principal de búsqueda cruzada
-# ====================================================
+# ===============================
+# FUNCIÓN PRINCIPAL
+# ===============================
 
 def buscar_email(username, nombre_completo=None):
-    # 1. Buscar en Facebook
-    fb = buscar_email_en_facebook(username, nombre_completo)
-    if fb:
-        return fb
+    print("🔎 Iniciando búsqueda cruzada...")
 
-    # 2. Buscar en Twitter
-    tw = buscar_email_en_twitter(username)
-    if tw:
-        return tw
+    estrategias = [
+        buscar_email_en_instagram,
+        buscar_email_en_youtube,
+        buscar_email_en_tiktok,
+        buscar_email_en_telegram,
+        buscar_email_en_x,
+        buscar_email_en_facebook,
+        buscar_email_en_github,
+        buscar_email_en_aboutme,
+        buscar_email_en_medium,
+        lambda u: buscar_email_en_duckduckgo(nombre_completo or username),
+        lambda u: buscar_email_en_google(u, nombre_completo)
+    ]
 
-    # 3. Buscar en GitHub
-    gh = buscar_email_en_github(username)
-    if gh:
-        return gh
+    for estrategia in estrategias:
+        resultado = estrategia(username)
+        if resultado and resultado["email"]:
+            return resultado
 
-    # 4. Buscar en About.me
-    ab = buscar_email_en_aboutme(username)
-    if ab:
-        return ab
-
-    # 5. Buscar en Medium
-    med = buscar_email_en_medium(username)
-    if med:
-        return med
-
-    # 6. Buscar con DuckDuckGo
-    query = nombre_completo if nombre_completo else username
-    ddg_result = buscar_email_en_duckduckgo(query)
-    if ddg_result:
-        return ddg_result
-
-    # 7. Búsqueda final por Google
-    return buscar_email_en_google(username, nombre_completo)
+    return {"email": None, "url_fuente": None, "origen": "no_encontrado"}

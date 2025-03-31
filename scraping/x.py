@@ -1,13 +1,11 @@
-from playwright.sync_api import sync_playwright
-import re
-from services.validator import validar_email, validar_telefono
+from playwright.sync_api import sync_playwright, TimeoutError
+from services.validator import extraer_emails, extraer_telefonos
 from services.busqueda_cruzada import buscar_email
 
-EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
-PHONE_REGEX = r"\+?\d[\d\s().-]{7,}"
 
 def scrape_x(username):
     print(f"🚀 Iniciando scraping de X para: {username}")
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context()
@@ -17,39 +15,28 @@ def scrape_x(username):
             url = f"https://twitter.com/{username}"
             print(f"🌐 Navegando a {url}")
             page.goto(url, timeout=60000)
-            print("⏳ Esperando que cargue el perfil...")
             page.wait_for_timeout(3000)
 
-            # Extraer nombre
-            nombre = page.locator("div[data-testid='UserName'] span").first
-            nombre_texto = nombre.inner_text() if nombre.is_visible() else "No encontrado"
-            print(f"✅ Nombre detectado: {nombre_texto}")
+            # Nombre del perfil
+            nombre_element = page.locator("div[data-testid='UserName'] span").first
+            nombre = nombre_element.inner_text() if nombre_element.is_visible() else username
 
-            # Extraer bio
-            bio_locator = page.locator("div[data-testid='UserDescription']")
-            bio = bio_locator.inner_text() if bio_locator.count() > 0 else ""
-            print(f"🔍 Bio: {bio or 'No encontrada'}")
+            # Bio
+            bio_element = page.locator("div[data-testid='UserDescription']")
+            bio = bio_element.inner_text() if bio_element.count() > 0 else ""
 
-            # Email
-            matches = re.findall(EMAIL_REGEX, bio)
-            email = None
-            for e in matches:
-                if validar_email(e):
-                    email = e
-                    email_fuente = "bio"
-                    break
+            # 📩 Email y ☎️ Teléfono
+            emails = extraer_emails(bio)
+            email = emails[0] if emails else None
+            email_fuente = "bio" if email else None
 
-            # Teléfono
-            matches_tel = re.findall(PHONE_REGEX, bio)
-            telefono = None
-            for tel in matches_tel:
-                if validar_telefono(tel):
-                    telefono = tel
-                    break
+            telefonos = extraer_telefonos(bio)
+            telefono = telefonos[0] if telefonos else None
 
-            # Si no hay email, buscar externamente
+            # 🔁 Búsqueda cruzada si no se encontró email
             if not email:
-                resultado = buscar_email(username, nombre_texto)
+                print("🔁 Email no encontrado en bio. Buscando externamente...")
+                resultado = buscar_email(username, nombre)
                 email = resultado["email"]
                 email_fuente = resultado["url_fuente"]
                 origen = resultado["origen"]
@@ -57,7 +44,7 @@ def scrape_x(username):
                 origen = "bio"
 
             return {
-                "nombre": nombre_texto,
+                "nombre": nombre,
                 "usuario": username,
                 "bio": bio,
                 "email": email or "No encontrado",
@@ -66,10 +53,12 @@ def scrape_x(username):
                 "origen": origen
             }
 
-        except Exception as e:
-            print("❌ Error en scraping:", str(e))
+        except TimeoutError:
+            print("❌ Timeout al acceder al perfil.")
             return None
-
+        except Exception as e:
+            print("❌ Error general:", str(e))
+            return None
         finally:
             page.close()
             context.close()
