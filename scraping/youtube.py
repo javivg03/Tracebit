@@ -1,14 +1,14 @@
 from playwright.sync_api import sync_playwright
 import re
-from services.validator import validar_email
-from services.busqueda_cruzada import buscar_email
+from services.validator import validar_email, validar_telefono
+from services.busqueda_cruzada import buscar_email  # Aquí podrías integrar más adelante la búsqueda de teléfonos
 
 EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
-
+PHONE_REGEX = r"\+?\d[\d\s().-]{7,}"
 
 def scrape_youtube(username):
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=True)
         context = browser.new_context()
         page = context.new_page()
 
@@ -49,6 +49,12 @@ def scrape_youtube(username):
                     email_fuente = "bio"
                     break
 
+            # Buscar teléfono en la descripción
+            telefono = None
+            matches_tel = re.findall(PHONE_REGEX, descripcion)
+            if matches_tel:
+                telefono = validar_telefono(matches_tel[0])
+
             # Si no hay email → búsqueda cruzada
             if not email:
                 resultado = buscar_email(username, nombre)
@@ -58,7 +64,7 @@ def scrape_youtube(username):
             else:
                 origen = "bio"
 
-            # Buscar enlaces visibles externos (si hay)
+            # Buscar enlaces externos (que no sean de YouTube)
             enlaces = []
             try:
                 links = page.locator("a[href^='http']").all()
@@ -74,6 +80,7 @@ def scrape_youtube(username):
                 "usuario": username,
                 "email": email,
                 "fuente_email": email_fuente,
+                "telefono": telefono,
                 "enlaces_web": enlaces,
                 "origen": origen
             }

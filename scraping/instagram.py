@@ -1,25 +1,25 @@
 import instaloader
 import re
-from services.validator import validar_email
 from services.busqueda_cruzada import buscar_email
+from services.validator import validar_email, validar_telefono
 
 EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
 PHONE_REGEX = r"\+?\d[\d\s().-]{7,}"
 
 def extraer_datos_relevantes(username):
     # Inicializar Instaloader
-    L = instaloader.Instaloader()
+    insta_loader = instaloader.Instaloader()
 
     # Intentar cargar la sesión guardada
     try:
-        L.load_session_from_file("pruebasrc1")  # Cambia esto por tu usuario si es otro
+        insta_loader.load_session_from_file("pruebasrc1")  # Cambia esto por tu usuario si es otro
         print("✅ Sesión cargada correctamente.")
     except Exception as e:
         print(f"⚠️ No se pudo cargar la sesión: {e}")
 
     # Obtener perfil
     try:
-        profile = instaloader.Profile.from_username(L.context, username)
+        profile = instaloader.Profile.from_username(insta_loader.context, username)
     except Exception as e:
         print(f"❌ Error al obtener el perfil de Instagram: {e}")
         return {
@@ -54,8 +54,10 @@ def extraer_datos_relevantes(username):
     # Buscar teléfono en bio
     telefono = None
     matches_tel = re.findall(PHONE_REGEX, bio)
-    if matches_tel:
-        telefono = matches_tel[0]
+    for tel in matches_tel:
+        if validar_telefono(tel):
+            telefono = tel
+            break
 
     # Búsqueda cruzada si no hay email
     if not email:

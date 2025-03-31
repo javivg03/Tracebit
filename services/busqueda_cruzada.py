@@ -61,8 +61,36 @@ def buscar_email_en_github(username):
     except Exception:
         return None
 
+def buscar_email_en_aboutme(username):
+    url = f"https://about.me/{username}"
+    try:
+        res = requests.get(url, timeout=5)
+        if res.status_code != 200:
+            return None
+        text = BeautifulSoup(res.text, "html.parser").get_text()
+        correos = re.findall(EMAIL_REGEX, text)
+        for correo in correos:
+            if validar_email(correo):
+                return {"email": correo, "origen": "aboutme", "url_fuente": url}
+    except Exception:
+        return None
+
+def buscar_email_en_medium(username):
+    url = f"https://medium.com/@{username}"
+    try:
+        res = requests.get(url, timeout=5)
+        if res.status_code != 200:
+            return None
+        text = BeautifulSoup(res.text, "html.parser").get_text()
+        correos = re.findall(EMAIL_REGEX, text)
+        for correo in correos:
+            if validar_email(correo):
+                return {"email": correo, "origen": "medium", "url_fuente": url}
+    except Exception:
+        return None
+
 # ====================================================
-# SECCIÓN 2: Búsqueda en DuckDuckGo (nuevo fallback)
+# SECCIÓN 2: Búsqueda en DuckDuckGo
 # ====================================================
 
 def buscar_email_en_duckduckgo(query, max_urls=5):
@@ -87,7 +115,6 @@ def buscar_email_en_duckduckgo(query, max_urls=5):
             except Exception:
                 continue
     return None
-
 
 # ====================================================
 # SECCIÓN 3: Búsqueda en Google (última opción)
@@ -121,7 +148,7 @@ def buscar_email_en_google(username, nombre_completo=None, max_urls=5):
 # ====================================================
 
 def buscar_email(username, nombre_completo=None):
-    # 1. Buscar en Facebook (username y nombre)
+    # 1. Buscar en Facebook
     fb = buscar_email_en_facebook(username, nombre_completo)
     if fb:
         return fb
@@ -136,17 +163,21 @@ def buscar_email(username, nombre_completo=None):
     if gh:
         return gh
 
-    # 4. Buscar con DuckDuckGo si no hay resultados anteriores
+    # 4. Buscar en About.me
+    ab = buscar_email_en_aboutme(username)
+    if ab:
+        return ab
+
+    # 5. Buscar en Medium
+    med = buscar_email_en_medium(username)
+    if med:
+        return med
+
+    # 6. Buscar con DuckDuckGo
     query = nombre_completo if nombre_completo else username
     ddg_result = buscar_email_en_duckduckgo(query)
     if ddg_result:
         return ddg_result
 
-    # 5. Búsqueda final por Google (última opción)
+    # 7. Búsqueda final por Google
     return buscar_email_en_google(username, nombre_completo)
-
-# NOTA:
-# Si este archivo se hace demasiado largo, puedes separar así:
-# - services/fuentes_directas.py → funciones facebook/twitter/github
-# - services/google_fallback.py → buscar_email_en_google()
-# - services/busqueda_cruzada.py → solo dejar buscar_email() y orquestar todo

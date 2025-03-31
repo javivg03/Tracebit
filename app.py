@@ -4,7 +4,6 @@ import requests
 import re
 import pandas as pd
 from fastapi import FastAPI, Body
-from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -64,14 +63,26 @@ def telegram_scraper(data: UserInput = Body(...)):
 def youtube_scraper(data: UserInput = Body(...)):
     username = data.username
     try:
-        data = scrape_youtube(username)
+        resultado = scrape_youtube(username)
+        print("✅ Resultado YouTube:", resultado)
+
+        if not resultado:
+            raise Exception("El scraper no devolvió datos.")
+
         filename = f"exports/youtube_{username}.xlsx"
-        export_to_excel([data], filename)
+        export_to_excel([resultado], filename)
         guardar_historial("YouTube", username, "Éxito")
-        return {"data": data, "excel_path": f"/download/youtube_{username}.xlsx"}
+        return {
+            "data": resultado,
+            "excel_path": f"/download/youtube_{username}.xlsx"
+        }
+
     except Exception as e:
+        print("❌ Error en scraping YouTube:", str(e))
         guardar_historial("YouTube", username, f"Error: {str(e)}")
-        return JSONResponse(status_code=400, content={"error": "No se pudo scrapear el canal."})
+        return JSONResponse(status_code=400, content={"error": f"No se pudo scrapear el canal: {str(e)}"})
+
+
 
 
 @app.post("/scrape/web")

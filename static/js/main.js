@@ -22,19 +22,27 @@ async function scrapear() {
       body: JSON.stringify({ username })
     });
 
+    const json = await res.json();
     document.getElementById("loader").style.display = "none";
 
     if (!res.ok) {
-      const error = await res.json();
-      document.getElementById("resultado").innerHTML = `❌ ${error.error || "Error al scrapear."}`;
+      console.error("❌ Error recibido:", json);
+      document.getElementById("resultado").innerHTML = `❌ ${json.error || "Error al scrapear."}`;
       return;
     }
 
     const json = await res.json();
+    console.log("📦 Respuesta:", json);
+
     const data = json.data;
     const resultadoDiv = document.getElementById("resultado");
 
-    // Si es array (como en web scraping)
+    if (!data) {
+      resultadoDiv.innerHTML = "❌ No se pudieron obtener datos del perfil.";
+      return;
+    }
+
+    // Si es un array de resultados (web scraping)
     if (Array.isArray(data)) {
       if (data.length === 0) {
         resultadoDiv.innerHTML = "<p>No se encontraron resultados.</p>";
@@ -49,14 +57,14 @@ async function scrapear() {
               <h5 class="card-title">${r.title || r.titulo || "Resultado"}</h5>
               <p class="card-text">${r.snippet || ""}</p>
               <p><strong>Email encontrado:</strong> ${r.email || "N/A"}</p>
-              <a href="${r.link || r.url}" target="_blank" class="btn btn-outline-primary">Ver enlace</a>
+              <a href="${r.link || r.url || "#"}" target="_blank" class="btn btn-outline-primary">Ver enlace</a>
             </div>
           </div>`;
       });
 
       resultadoDiv.innerHTML = html;
     } else {
-      // Objeto único como en Instagram/Telegram/YouTube
+      // Objeto único (Instagram, Telegram, YouTube, etc.)
       let html = `<div class="card p-3"><h5 class="card-title">${data.nombre || data.usuario || "Usuario"}</h5><ul class="list-group list-group-flush">`;
 
       for (const key in data) {
