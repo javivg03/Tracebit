@@ -1,0 +1,25 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+.env/
+
+# PyCharm
+.idea/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos de test temporales
+#test_*.py --> Lo mantengo por ahora
+
+# Archivos de log o exportaciones
+*.log
+*.csv
+*.xlsx
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db

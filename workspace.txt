@@ -21,5 +21,8 @@ fct_scraper_backend/
 │   └── index.html
 ├── requirements.txt
 ├── workspace.txt
+├── gitattributes.txt
 ├── README.md
-├── .env
+├── test_*.py (todos los archivos de prueba)
+├── venv/
+├── (venv/ --> library root - pycharm)
