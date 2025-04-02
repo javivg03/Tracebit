@@ -124,10 +124,9 @@ Si quieres mantener sesiones, colócalas en el proyecto y **NO las subas a Git**
 
 ---
 
-## ✍️ Autores
+## ✍️ Autor
 
-- 👨‍💻 **Javier R. C.** – Desarrollador principal  
-- 👨‍💻 **Colaborador:** (nombre del compañero)
+- 👨‍💻 **Javier V.G.** – Desarrollador principal  
 
 ---
 
