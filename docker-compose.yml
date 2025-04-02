@@ -1,9 +1,20 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7.2
+    ports:
+      - "6379:6379"  # Para desarrollo local
+
   backend:
     build: .
+    container_name: fct_scraper_app
     ports:
-      - "8000:8000"  # Mapea el puerto 8000 del contenedor al 8000 de tu máquina
+      - "8000:8000"
     volumes:
-      - .:/app  # Permite que los cambios en tu código en Windows se reflejen en el contenedor
+      - .:/app
+      - C:/Users/javie/AppData/Local/Instaloader:/root/.config/instaloader
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0

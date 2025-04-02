@@ -1,10 +1,17 @@
-from scraping.instagram import extraer_datos_relevantes
+from playwright.sync_api import sync_playwright
 
-# Reemplaza con un perfil público real para probar
-username = "joanpradells"  # Ejemplo, puedes cambiarlo por otro
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=False)  # Lanzamos navegador visible
+    context = browser.new_context()
 
-datos = extraer_datos_relevantes(username)
+    page = context.new_page()
+    page.goto("https://www.instagram.com/accounts/login/")
 
-print("\n📦 DATOS EXTRAÍDOS:")
-for clave, valor in datos.items():
-    print(f"{clave}: {valor}")
+    print("🕒 Tienes 30 segundos para iniciar sesión manualmente...")
+    page.wait_for_timeout(30000)  # 30 segundos para iniciar sesión manual
+
+    # Guardar sesión ya logueada
+    context.storage_state(path="state.json")
+    print("✅ Sesión guardada como state.json")
+
+    browser.close()

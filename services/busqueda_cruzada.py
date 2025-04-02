@@ -6,7 +6,7 @@ from duckduckgo_search import DDGS
 import concurrent.futures
 
 from services.validator import extraer_emails, extraer_telefonos
-from scraping.instagram import extraer_datos_relevantes as scrape_instagram
+from scraping.insta import extraer_datos_relevantes as scrape_instagram
 from scraping.telegram import scrape_telegram
 
 
