@@ -1,27 +1,29 @@
-from playwright.sync_api import sync_playwright, TimeoutError
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 from services.validator import extraer_emails, extraer_telefonos
 
-def scrape_x(username):
+async def scrape_x(username):
     print(f"🚀 Iniciando scraping de X para: {username}")
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
-
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
         try:
             url = f"https://twitter.com/{username}"
             print(f"🌐 Navegando a {url}")
-            page.goto(url, timeout=60000)
-            page.wait_for_timeout(3000)
+            await page.goto(url, timeout=60000)
+            await page.wait_for_timeout(3000)
 
             # Nombre del perfil
-            nombre_element = page.locator("div[data-testid='UserName'] span").first
-            nombre = nombre_element.inner_text() if nombre_element.is_visible() else username
+            nombre_locator = page.locator("div[data-testid='UserName'] span").first
+            nombre = username  # Valor por defecto
+            if await nombre_locator.is_visible():
+                nombre = await nombre_locator.inner_text()
 
             # Bio
-            bio_element = page.locator("div[data-testid='UserDescription']")
-            bio = bio_element.inner_text() if bio_element.count() > 0 else ""
+            bio_locator = page.locator("div[data-testid='UserDescription']")
+            bio = ""
+            if await bio_locator.count() > 0:
+                bio = await bio_locator.inner_text()
 
             # 📩 Email y ☎️ Teléfono
             emails = extraer_emails(bio)
@@ -43,7 +45,7 @@ def scrape_x(username):
                 "origen": origen
             }
 
-        except TimeoutError:
+        except PlaywrightTimeoutError:
             print("❌ Timeout al acceder al perfil.")
             return {
                 "nombre": None,
@@ -68,6 +70,6 @@ def scrape_x(username):
             }
 
         finally:
-            page.close()
-            context.close()
-            browser.close()
+            await page.close()
+            await context.close()
+            await browser.close()

@@ -23,3 +23,9 @@ __pycache__/
 # Archivos del sistema
 .DS_Store
 Thumbs.db
+
+# Ignorar todo en exports/
+exports/*
+
+# Pero NO ignorar exporter.py
+!exports/exporter.py

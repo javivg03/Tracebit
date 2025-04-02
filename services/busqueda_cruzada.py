@@ -1,147 +1,118 @@
 import requests
-from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
+from bs4 import BeautifulSoup
 from googlesearch import search as google_search
 from duckduckgo_search import DDGS
+import concurrent.futures
 
-from services.validator import extraer_emails
+from services.validator import extraer_emails, extraer_telefonos
 from scraping.instagram import extraer_datos_relevantes as scrape_instagram
-from scraping.youtube import scrape_youtube
-from scraping.tiktok import scrape_tiktok
 from scraping.telegram import scrape_telegram
-from scraping.facebook import scrape_facebook
-from scraping.x import scrape_x
+
 
 # ===============================
-# FUNCIONES QUE USAN TUS SCRAPERS
+# FUNCIONES QUE USAN TUS SCRAPERS (LOS QUE NO USAN PLAYWRIGHT)
 # ===============================
 
-def buscar_email_en_instagram(username):
+def buscar_contacto_en_instagram(username):
     try:
         resultado = scrape_instagram(username)
-        if resultado["email"]:
+        if resultado.get("email") or resultado.get("telefono"):
             return {
-                "email": resultado["email"],
+                "email": resultado.get("email"),
+                "telefono": resultado.get("telefono"),
                 "origen": "instagram",
-                "url_fuente": resultado["fuente_email"]
+                "url_fuente": resultado.get("fuente_email")
             }
-    except:
+    except Exception:
         pass
     return None
 
-def buscar_email_en_youtube(username):
-    try:
-        resultado = scrape_youtube(username)
-        if resultado["email"]:
-            return {
-                "email": resultado["email"],
-                "origen": "youtube",
-                "url_fuente": resultado["fuente_email"]
-            }
-    except:
-        pass
-    return None
 
-def buscar_email_en_tiktok(username):
-    try:
-        resultado = scrape_tiktok(username)
-        if resultado["email"]:
-            return {
-                "email": resultado["email"],
-                "origen": "tiktok",
-                "url_fuente": resultado["fuente_email"]
-            }
-    except:
-        pass
-    return None
-
-def buscar_email_en_telegram(username):
+def buscar_contacto_en_telegram(username):
     try:
         resultado = scrape_telegram(username)
-        if resultado["email"]:
+        if resultado.get("email") or resultado.get("telefono"):
             return {
-                "email": resultado["email"],
+                "email": resultado.get("email"),
+                "telefono": resultado.get("telefono"),
                 "origen": "telegram",
-                "url_fuente": resultado["fuente_email"]
+                "url_fuente": resultado.get("fuente_email")
             }
-    except:
+    except Exception:
         pass
     return None
 
-def buscar_email_en_facebook(username):
-    try:
-        resultado = scrape_facebook(username)
-        if resultado["email"]:
-            return {
-                "email": resultado["email"],
-                "origen": "facebook",
-                "url_fuente": resultado["fuente_email"]
-            }
-    except:
-        pass
-    return None
-
-def buscar_email_en_x(username):
-    try:
-        resultado = scrape_x(username)
-        if resultado["email"] and resultado["email"] != "No encontrado":
-            return {
-                "email": resultado["email"],
-                "origen": "x",
-                "url_fuente": resultado["fuente_email"]
-            }
-    except:
-        pass
-    return None
 
 # ===============================
 # FUENTES EXTERNAS (NO SCRAPERS PROPIOS)
 # ===============================
 
-def buscar_email_en_github(username):
+def buscar_contacto_en_github(username):
     url = f"https://github.com/{username}"
     try:
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
-            text = BeautifulSoup(res.text, "html.parser").get_text()
+            text = BeautifulSoup(res.text, "html.parser").get_text(separator=" ", strip=True)
             emails = extraer_emails(text)
-            if emails:
-                return {"email": emails[0], "origen": "github", "url_fuente": url}
-    except:
+            telefonos = extraer_telefonos(text)
+            if emails or telefonos:
+                return {
+                    "email": emails[0] if emails else None,
+                    "telefono": telefonos[0] if telefonos else None,
+                    "origen": "github",
+                    "url_fuente": url
+                }
+    except Exception:
         pass
     return None
 
-def buscar_email_en_aboutme(username):
+
+def buscar_contacto_en_aboutme(username):
     url = f"https://about.me/{username}"
     try:
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
-            text = BeautifulSoup(res.text, "html.parser").get_text()
+            text = BeautifulSoup(res.text, "html.parser").get_text(separator=" ", strip=True)
             emails = extraer_emails(text)
-            if emails:
-                return {"email": emails[0], "origen": "aboutme", "url_fuente": url}
-    except:
+            telefonos = extraer_telefonos(text)
+            if emails or telefonos:
+                return {
+                    "email": emails[0] if emails else None,
+                    "telefono": telefonos[0] if telefonos else None,
+                    "origen": "aboutme",
+                    "url_fuente": url
+                }
+    except Exception:
         pass
     return None
 
-def buscar_email_en_medium(username):
+
+def buscar_contacto_en_medium(username):
     url = f"https://medium.com/@{username}"
     try:
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
-            text = BeautifulSoup(res.text, "html.parser").get_text()
+            text = BeautifulSoup(res.text, "html.parser").get_text(separator=" ", strip=True)
             emails = extraer_emails(text)
-            if emails:
-                return {"email": emails[0], "origen": "medium", "url_fuente": url}
-    except:
+            telefonos = extraer_telefonos(text)
+            if emails or telefonos:
+                return {
+                    "email": emails[0] if emails else None,
+                    "telefono": telefonos[0] if telefonos else None,
+                    "origen": "medium",
+                    "url_fuente": url
+                }
+    except Exception:
         pass
     return None
+
 
 # ===============================
 # MOTORES DE BÚSQUEDA EXTERNOS
 # ===============================
 
-def buscar_email_en_duckduckgo(query, max_urls=5):
+def buscar_contacto_en_duckduckgo(query, max_urls=5):
     print(f"🔍 DuckDuckGo → {query}")
     with DDGS() as ddgs:
         resultados = ddgs.text(query, region="es-es", safesearch="Moderate", max_results=max_urls)
@@ -151,53 +122,117 @@ def buscar_email_en_duckduckgo(query, max_urls=5):
                 continue
             try:
                 html = requests.get(url, timeout=5).text
-                text = BeautifulSoup(html, "html.parser").get_text()
+                text = BeautifulSoup(html, "html.parser").get_text(separator=" ", strip=True)
                 emails = extraer_emails(text)
-                if emails:
-                    return {"email": emails[0], "url_fuente": url, "origen": "duckduckgo"}
-            except:
+                telefonos = extraer_telefonos(text)
+                if emails or telefonos:
+                    return {
+                        "email": emails[0] if emails else None,
+                        "telefono": telefonos[0] if telefonos else None,
+                        "url_fuente": url,
+                        "origen": "duckduckgo"
+                    }
+            except Exception:
                 continue
     return None
 
-def buscar_email_en_google(username, nombre_completo=None, max_urls=5):
-    query = f'"{nombre_completo or username}" contacto OR email OR sitio web'
+
+def buscar_contacto_en_google(username, nombre_completo=None, max_urls=5):
+    query = f'"{nombre_completo or username}" contacto OR email OR teléfono OR "sitio web"'
     print(f"🔍 Google → {query}")
     resultados = google_search(query, num_results=max_urls, lang="es")
     for url in resultados:
         try:
             html = requests.get(url, timeout=5).text
-            text = BeautifulSoup(html, "html.parser").get_text()
+            text = BeautifulSoup(html, "html.parser").get_text(separator=" ", strip=True)
             emails = extraer_emails(text)
-            if emails:
-                return {"email": emails[0], "url_fuente": url, "origen": "google"}
-        except:
+            telefonos = extraer_telefonos(text)
+            if emails or telefonos:
+                return {
+                    "email": emails[0] if emails else None,
+                    "telefono": telefonos[0] if telefonos else None,
+                    "url_fuente": url,
+                    "origen": "google"
+                }
+        except Exception:
             continue
-    return {"email": None, "url_fuente": None, "origen": "no_encontrado"}
+    return {"email": None, "telefono": None, "url_fuente": None, "origen": "no_encontrado"}
+
+
+def buscar_contacto_en_yahoo(username, nombre_completo=None, max_urls=5):
+    # Ejemplo de integración con Yahoo search (se usa el motor de búsqueda de Yahoo mediante una query HTTP)
+    query = f'"{nombre_completo or username}" contacto OR email OR teléfono'
+    url_search = f"https://es.search.yahoo.com/search?p={quote_plus(query)}"
+    print(f"🔍 Yahoo → {query}")
+    try:
+        res = requests.get(url_search, timeout=5)
+        if res.status_code == 200:
+            text = BeautifulSoup(res.text, "html.parser").get_text(separator=" ", strip=True)
+            emails = extraer_emails(text)
+            telefonos = extraer_telefonos(text)
+            if emails or telefonos:
+                return {
+                    "email": emails[0] if emails else None,
+                    "telefono": telefonos[0] if telefonos else None,
+                    "url_fuente": url_search,
+                    "origen": "yahoo"
+                }
+    except Exception:
+        pass
+    return None
+
 
 # ===============================
-# FUNCIÓN PRINCIPAL
+# FUNCIÓN PRINCIPAL DE BÚSQUEDA CRUZADA CON EJECUCIÓN CONCURRENTE Y PRIORIDADES
 # ===============================
 
-def buscar_email(username, nombre_completo=None):
-    print("🔎 Iniciando búsqueda cruzada...")
+# Asignamos prioridades (mayor valor indica mayor confiabilidad)
+PRIORIDADES = {
+    "instagram": 10,
+    "telegram": 9,
+    "github": 7,
+    "aboutme": 6,
+    "medium": 6,
+    "duckduckgo": 4,
+    "google": 4,
+    "yahoo": 3
+}
+
+
+def buscar_contacto(username, nombre_completo=None):
+    """
+    Ejecuta varias estrategias de búsqueda cruzada concurrentemente para obtener email y teléfono.
+    """
+    print("🔎 Iniciando búsqueda cruzada (sin Playwright)...")
 
     estrategias = [
-        buscar_email_en_instagram,
-        buscar_email_en_youtube,
-        buscar_email_en_tiktok,
-        buscar_email_en_telegram,
-        buscar_email_en_x,
-        buscar_email_en_facebook,
-        buscar_email_en_github,
-        buscar_email_en_aboutme,
-        buscar_email_en_medium,
-        lambda u: buscar_email_en_duckduckgo(nombre_completo or username),
-        lambda u: buscar_email_en_google(u, nombre_completo)
+        buscar_contacto_en_instagram,
+        buscar_contacto_en_telegram,
+        buscar_contacto_en_github,
+        buscar_contacto_en_aboutme,
+        buscar_contacto_en_medium,
+        lambda u: buscar_contacto_en_duckduckgo(nombre_completo or username),
+        lambda u: buscar_contacto_en_google(u, nombre_completo),
+        lambda u: buscar_contacto_en_yahoo(u, nombre_completo)
     ]
 
-    for estrategia in estrategias:
-        resultado = estrategia(username)
-        if resultado and resultado["email"]:
-            return resultado
+    resultados = []
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Lanzamos todas las estrategias en paralelo
+        futures = {executor.submit(estrategia, username): estrategia for estrategia in estrategias}
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                res = future.result()
+                if res and (res.get("email") or res.get("telefono")):
+                    resultados.append(res)
+            except Exception:
+                continue
 
-    return {"email": None, "url_fuente": None, "origen": "no_encontrado"}
+    if resultados:
+        # Seleccionamos el resultado con la mayor prioridad
+        resultados.sort(key=lambda r: PRIORIDADES.get(r.get("origen"), 0), reverse=True)
+        mejor_resultado = resultados[0]
+        print(f"✅ Resultado seleccionado: {mejor_resultado}")
+        return mejor_resultado
+
+    return {"email": None, "telefono": None, "url_fuente": None, "origen": "no_encontrado"}

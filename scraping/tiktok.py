@@ -1,42 +1,44 @@
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 from services.validator import extraer_emails, extraer_telefonos
 
-def scrape_tiktok(entrada):
+async def scrape_tiktok(entrada):
     print(f"🚀 Iniciando scraping de TikTok con Playwright para: {entrada}")
     urls = [
         f"https://www.tiktok.com/@{entrada}",
         f"https://www.tiktok.com/search?q={quote_plus(entrada)}"
     ]
+    resultado = None
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
 
         for url in urls:
             try:
                 print(f"🌐 Visitando: {url}")
-                page.goto(url, timeout=15000)
-                page.wait_for_timeout(4000)
+                await page.goto(url, timeout=15000)
+                await page.wait_for_timeout(4000)
 
-                # Bio (si existe)
+                # Intentar extraer la bio, si existe
+                bio = ""
                 try:
                     bio_element = page.locator('[data-e2e="user-bio"]')
-                    bio_element.wait_for(timeout=5000)
-                    bio = bio_element.inner_text()
+                    await bio_element.wait_for(timeout=5000)
+                    bio = await bio_element.inner_text()
                 except PlaywrightTimeoutError:
                     bio = ""
 
-                # HTML y nombre
-                html = page.content()
+                # Obtener el HTML y extraer el nombre usando BeautifulSoup
+                html = await page.content()
                 soup = BeautifulSoup(html, "html.parser")
                 nombre_tag = soup.find("h2")
                 nombre = nombre_tag.get_text(strip=True) if nombre_tag else entrada
 
-                # 📩 Email y ☎️ Teléfono
+                # Extraer email y teléfono desde la bio
                 emails = extraer_emails(bio)
                 email = emails[0] if emails else None
                 fuente_email = url if email else None
@@ -44,13 +46,13 @@ def scrape_tiktok(entrada):
                 telefonos = extraer_telefonos(bio)
                 telefono = telefonos[0] if telefonos else None
 
-                # Hashtags
+                # Extraer hashtags (si los hay)
                 hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")] if bio else []
 
                 origen = "bio" if email else "no_email"
 
-                browser.close()
-                return {
+                # Crear el diccionario de resultado
+                resultado = {
                     "nombre": nombre,
                     "usuario": entrada,
                     "email": email,
@@ -62,20 +64,27 @@ def scrape_tiktok(entrada):
                     "origen": origen
                 }
 
+                # Si se encuentra un email válido, se interrumpe el bucle
+                if email:
+                    print("✅ Email encontrado, terminando búsqueda en TikTok.")
+                    break
             except Exception as e:
                 print(f"⚠️ Error al procesar {url}: {e}")
                 continue
 
-        browser.close()
+        await browser.close()
 
-    return {
-        "nombre": None,
-        "usuario": entrada,
-        "email": None,
-        "fuente_email": None,
-        "telefono": None,
-        "seguidores": None,
-        "seguidos": None,
-        "hashtags": [],
-        "origen": "error"
-    }
+    # Si no se obtuvo ningún resultado, se retorna un diccionario con error
+    if resultado is None:
+        return {
+            "nombre": None,
+            "usuario": entrada,
+            "email": None,
+            "fuente_email": None,
+            "telefono": None,
+            "seguidores": None,
+            "seguidos": None,
+            "hashtags": [],
+            "origen": "error"
+        }
+    return resultado

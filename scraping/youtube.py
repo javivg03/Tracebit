@@ -1,35 +1,35 @@
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 from services.validator import extraer_emails, extraer_telefonos
 
-def scrape_youtube(username):
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
+async def scrape_youtube(username):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
 
         try:
             url = f"https://www.youtube.com/@{username}/about"
             print(f"🌐 Navegando a {url}")
-            page.goto(url, timeout=60000)
+            await page.goto(url, timeout=60000)
 
             # Aceptar cookies si aparecen
             try:
-                page.wait_for_timeout(3000)
-                boton = page.locator("button:has-text('Aceptar todo')").first
-                if boton.is_visible():
-                    boton.click()
+                await page.wait_for_timeout(3000)
+                boton = await page.query_selector("button:has-text('Aceptar todo')")
+                if boton and await boton.is_visible():
+                    await boton.click()
                     print("✅ Cookies aceptadas")
-            except:
-                print("(i) No se encontró el botón de cookies")
+            except Exception as e:
+                print(f"(i) No se encontró botón de cookies o fallo: {e}")
 
-            page.wait_for_timeout(3000)
+            await page.wait_for_timeout(3000)
 
-            # Título de la página como nombre del canal
-            nombre = page.title().replace(" - YouTube", "")
+            nombre = (await page.title()).replace(" - YouTube", "")
 
-            # Descripción del canal (bio)
+            # Descripción del canal
             try:
-                descripcion = page.locator("#description-container").inner_text()
+                desc_elem = await page.query_selector("#description-container")
+                descripcion = await desc_elem.inner_text() if desc_elem else ""
             except:
                 descripcion = ""
 
@@ -43,28 +43,28 @@ def scrape_youtube(username):
 
             origen = "bio" if email else "no_email"
 
-            # 🌐 Extraer enlaces externos que no sean de YouTube
+            # 🌐 Extraer enlaces externos
             enlaces = []
             try:
-                links = page.locator("a[href^='http']").all()
+                links = await page.query_selector_all("a[href^='http']")
                 for link in links:
-                    href = link.get_attribute("href")
+                    href = await link.get_attribute("href")
                     if href and "youtube.com" not in href:
-                        enlaces.append(href)
+                        enlaces.append(str(href))
             except:
                 pass
 
             return {
-                "nombre": nombre,
-                "usuario": username,
-                "email": email,
-                "fuente_email": email_fuente,
-                "telefono": telefono,
+                "nombre": str(nombre),
+                "usuario": str(username),
+                "email": str(email) if email else None,
+                "fuente_email": str(email_fuente) if email_fuente else None,
+                "telefono": str(telefono) if telefono else None,
                 "enlaces_web": enlaces,
-                "origen": origen
+                "origen": str(origen)
             }
 
         finally:
-            page.close()
-            context.close()
-            browser.close()
+            await page.close()
+            await context.close()
+            await browser.close()

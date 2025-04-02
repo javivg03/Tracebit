@@ -22,7 +22,8 @@ fct_scraper_backend/
 ├── requirements.txt
 ├── workspace.txt
 ├── gitattributes.txt
+├── Dockerfile
+├── docker-compose.yml
 ├── README.md
 ├── test_*.py (todos los archivos de prueba)
-├── venv/
-├── (venv/ --> library root - pycharm)
+

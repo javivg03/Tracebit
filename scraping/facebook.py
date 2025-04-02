@@ -1,10 +1,10 @@
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 from services.validator import extraer_emails, extraer_telefonos
 
-def scrape_facebook(username_o_nombre):
+async def scrape_facebook(username_o_nombre):
     print(f"🚀 Iniciando scraping de Facebook con Playwright para: {username_o_nombre}")
 
     urls = [
@@ -12,18 +12,18 @@ def scrape_facebook(username_o_nombre):
         f"https://www.facebook.com/public?q={quote_plus(username_o_nombre)}"
     ]
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
 
         for url in urls:
             try:
                 print(f"🌐 Visitando: {url}")
-                page.goto(url, timeout=15000)
-                page.wait_for_timeout(5000)
+                await page.goto(url, timeout=15000)
+                await page.wait_for_timeout(5000)
 
-                html = page.content()
+                html = await page.content()
                 soup = BeautifulSoup(html, "html.parser")
                 text = soup.get_text(separator=" ", strip=True)
 
@@ -35,7 +35,7 @@ def scrape_facebook(username_o_nombre):
                     email_valido = emails[0]
                     telefono_valido = telefonos[0] if telefonos else None
 
-                    browser.close()
+                    await browser.close()
                     return {
                         "nombre": username_o_nombre,
                         "usuario": username_o_nombre,
@@ -49,9 +49,9 @@ def scrape_facebook(username_o_nombre):
                 print(f"⚠️ Error en URL: {url} → {e}")
                 continue
 
-        browser.close()
+        await browser.close()
 
-    # ❌ No se encontró email directo → se devuelve sin email y luego lo maneja `buscar_email`
+    # Si no se encontró email directo, se devuelve un resultado sin email para que la búsqueda cruzada lo maneje.
     return {
         "nombre": username_o_nombre,
         "usuario": username_o_nombre,

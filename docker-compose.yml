@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"  # Mapea el puerto 8000 del contenedor al 8000 de tu máquina
+    volumes:
+      - .:/app  # Permite que los cambios en tu código en Windows se reflejen en el contenedor
