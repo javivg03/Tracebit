@@ -116,7 +116,7 @@ Si quieres mantener sesiones, colócalas en el proyecto y **NO las subas a Git**
 
 ## 🧩 Futuras fases (en desarrollo)
 
-- Scraping masivo de seguidores/seguidos (Instagram)  
+- Scraping masivo de seguidores/seguidos   
 - Tareas asíncronas con Celery + Redis  
 - Rotación de proxies  
 - Interfaz mejorada con Beezer  
