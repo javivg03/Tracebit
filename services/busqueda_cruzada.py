@@ -7,7 +7,7 @@ import concurrent.futures
 
 from services.validator import extraer_emails, extraer_telefonos
 from scraping.insta import extraer_datos_relevantes as scrape_instagram
-from scraping.telegram import scrape_telegram
+#from scraping.telegram import scrape_telegram
 
 
 # ===============================

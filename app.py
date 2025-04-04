@@ -7,6 +7,7 @@ import traceback
 
 from scraping.instagram.perfil import extraer_datos_relevantes
 from tasks.tasks import scrape_instagram, scrape_followers
+from tasks.tasks import scrape_tiktok_task
 from services.history import guardar_historial
 from exports.exporter import export_to_excel
 import services.busqueda_cruzada as busqueda_cruzada
@@ -67,3 +68,8 @@ def lanzar_scraping_perfil(username: str):
 def lanzar_scraping_seguidores(username: str):
     tarea = scrape_followers.delay(username)
     return {"mensaje": "Extracción de seguidores en curso", "tarea_id": tarea.id}
+
+@app.post("/scrapear/tiktok/{username}")
+def lanzar_scraping_tiktok(username: str):
+    tarea = scrape_tiktok_task.delay(username)
+    return {"mensaje": "Scraping de TikTok en curso", "tarea_id": tarea.id}

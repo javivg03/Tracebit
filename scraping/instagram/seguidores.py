@@ -8,7 +8,7 @@ def obtener_seguidores(username: str, max_seguidores: int = 10):
     with sync_playwright() as p:
         print("🧠 Lanzando navegador en modo headless...")
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(storage_state="state.json")
+        context = browser.new_context(storage_state="state_instagram.json")
         page = context.new_page()
 
         try:

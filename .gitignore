@@ -29,3 +29,7 @@ exports/*
 
 # Pero NO ignorar exporter.py
 !exports/exporter.py
+
+# Archivos de sesión
+state_tiktok.json
+state_instagram.json
