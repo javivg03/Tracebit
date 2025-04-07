@@ -15,19 +15,36 @@
     <label class="form-label">Plataforma:</label>
     <select id="plataforma" class="form-select w-auto">
       <option value="instagram">Instagram</option>
-      <option value="telegram">Telegram</option>
-      <option value="youtube">YouTube</option>
-      <option value="tiktok">TikTok</option>
-      <option value="facebook">Facebook</option>
-      <option value="x">X (Twitter)</option>
-      <option value="web">Web (Keyword)</option>
+      <!-- Puedes añadir más plataformas aquí -->
     </select>
 
-    <input type="text" id="username" class="form-control my-2" placeholder="Nombre de usuario o palabra clave">
-    <button class="btn btn-primary" onclick="scrapear()">Buscar y Scrapear</button>
+    <label class="form-label mt-2">Tipo de scraping:</label>
+    <select id="tipo" class="form-select w-auto">
+      <option value="perfil">Perfil</option>
+      <option value="seguidores">Seguidores</option>
+    </select>
+
+    <input type="text" id="username" class="form-control my-2" placeholder="Nombre de usuario">
+
+    <!-- input para máximo seguidores -->
+    <div id="grupo-max-seguidores" style="display: none;">
+      <label class="form-label mt-2">Nº máximo de seguidores a scrapear:</label>
+      <input type="number" id="max_seguidores" class="form-control w-auto" value="3" min="1" max="10">
+    </div>
+
+    <button class="btn btn-primary mt-3" onclick="scrapear()">Buscar y Scrapear</button>
   </div>
 
-  <!-- Spinner de carga -->
+  <!-- Barra de progreso (seguidores) -->
+  <div id="barra-progreso-container" class="my-3" style="display: none;">
+    <label class="form-label">Progreso:</label>
+    <div class="progress">
+      <div id="barra-progreso" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+           style="width: 0%">0%</div>
+    </div>
+  </div>
+
+  <!-- Spinner de carga (perfil) -->
   <div id="loader" class="text-center my-3" style="display: none;">
     <div class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Cargando...</span>
@@ -37,8 +54,8 @@
   <!-- Resultado del scraping -->
   <div id="resultado" class="bg-white p-3 border rounded"></div>
   <div id="descarga" style="display: none;">
-    <p class="mt-2">✅ Datos encontrados. Puedes descargar el Excel:</p>
-    <a id="link-descarga" class="btn btn-success" href="" download>📥 Descargar Excel</a>
+    <p class="mt-2">✅ Puedes descargar los resultados:</p>
+    <a id="link-descarga" class="btn btn-success" href="#" download>📥 Descargar Excel</a>
   </div>
 
   <hr class="my-5">

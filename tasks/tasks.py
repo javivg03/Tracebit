@@ -1,50 +1,33 @@
-from tasks.celery_worker import celery_app
-from scraping.instagram.perfil import extraer_datos_relevantes
-from scraping.instagram.seguidores import obtener_seguidores
+from celery_app import celery_app
+
+from scraping.instagram.seguidores import scrape_followers_info as run_scrape_followers_info
 from scraping.tiktok.perfil import scrape_tiktok
 
-# 🧠 Servicios extra
 from services import busqueda_cruzada, history
 from exports.exporter import export_to_excel
 
 
 @celery_app.task(queue="scraping")
-def scrape_instagram(username: str):
-    datos = extraer_datos_relevantes(username)
+def scrape_followers_info_task(username: str, max_seguidores: int = 3):
+    print(f"🚀 Tarea Celery: scrape_followers_info para {username} recibida")
+    datos = run_scrape_followers_info(username, max_seguidores)
 
     if not datos:
-        history.guardar_historial("Instagram", username, "Fallido")
-        return {"error": "No se pudo obtener el perfil"}
+        return {"estado": "fallo", "mensaje": "No se extrajo ningún seguidor"}
 
-    if not datos.get("email"):
-        resultado_cruzado = busqueda_cruzada.buscar_contacto(username, datos.get("nombre"))
-        if resultado_cruzado and (resultado_cruzado.get("email") or resultado_cruzado.get("telefono")):
-            datos.update({
-                "email": resultado_cruzado.get("email"),
-                "telefono": resultado_cruzado.get("telefono"),
-                "fuente_email": resultado_cruzado.get("url_fuente"),
-                "origen": f"{datos.get('origen', 'no_email')} + búsqueda cruzada ({resultado_cruzado.get('origen')})"
-            })
+    print(f"Datos obtenidos: {datos}")  # <-- Nuevas líneas de log
 
-    filename = f"exports/instagram_{username}.xlsx"
-    export_to_excel([datos], filename)
-    history.guardar_historial("Instagram", username, "Éxito")
+    return {
+        "estado": "ok",
+        "data": datos,
+        "excel_path": f"/download/seguidores_{username}.xlsx"
+    }
 
-    return datos
-
-
-@celery_app.task(queue="scraping")
-def scrape_followers(username: str, max_seguidores: int = 10):
-    lista = obtener_seguidores(username, max_seguidores)
-    return lista
 
 
 @celery_app.task(queue="scraping")
 def scrape_tiktok_task(username: str):
     import asyncio
-    from scraping.tiktok.perfil import scrape_tiktok
-    from services import busqueda_cruzada, history
-    from exports.exporter import export_to_excel
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -70,4 +53,3 @@ def scrape_tiktok_task(username: str):
     history.guardar_historial("TikTok", username, "Éxito")
 
     return datos
-

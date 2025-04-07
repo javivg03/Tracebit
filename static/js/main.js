@@ -1,139 +1,161 @@
 async function scrapear() {
   const username = document.getElementById("username").value.trim();
   const plataforma = document.getElementById("plataforma").value;
+  const tipo = document.getElementById("tipo").value;
+  const maxSeguidores = parseInt(document.getElementById("max_seguidores").value) || 3;
 
-  if (!username) return alert("Por favor ingresa un nombre de usuario o palabra clave");
+  if (!username) return alert("Por favor ingresa un nombre de usuario.");
 
+  // Limpiar resultados anteriores
   document.getElementById("resultado").innerHTML = "";
-  document.getElementById("loader").style.display = "block";
   document.getElementById("descarga").style.display = "none";
+  resetearBarraProgreso();
 
-  try {
-    const res = await fetch(`/scrape/${plataforma}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username })
-    });
+  if (tipo === "perfil") {
+    document.getElementById("loader").style.display = "block";  // Mostrar spinner
+    document.getElementById("barra-progreso-container").style.display = "none"; // Ocultar barra
 
-    const json = await res.json();
-    document.getElementById("loader").style.display = "none";
+    try {
+      const res = await fetch(`/scrape/${plataforma}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username })
+      });
 
-    if (!res.ok) {
-      console.error("❌ Error recibido:", json);
-      document.getElementById("resultado").innerHTML = `❌ ${json.error || "Error al scrapear."}`;
-      return;
-    }
+      const json = await res.json();
+      document.getElementById("loader").style.display = "none"; // Ocultar spinner
 
-    const data = json.data;
-    const resultadoDiv = document.getElementById("resultado");
-
-    if (!data) {
-      resultadoDiv.innerHTML = "❌ No se pudieron obtener datos del perfil.";
-      return;
-    }
-
-    if (Array.isArray(data)) {
-      if (data.length === 0) {
-        resultadoDiv.innerHTML = "<p>No se encontraron resultados.</p>";
+      if (!res.ok) {
+        document.getElementById("resultado").innerHTML = `❌ ${json.error || "Error al scrapear."}`;
         return;
       }
 
-      let html = "";
-      data.forEach(r => {
-        html += `
-          <div class="card mb-2">
-            <div class="card-body">
-              <h5 class="card-title">${r.title || r.titulo || "Resultado"}</h5>
-              <p class="card-text">${r.snippet || r.resumen || ""}</p>
-              <p><strong>Emails:</strong> ${(r.emails || [r.email] || []).join(", ") || "N/A"}</p>
-              <p><strong>Teléfonos:</strong> ${(r.telefonos || []).join(", ") || "N/A"}</p>
-              <a href="${r.link || r.url || "#"}" target="_blank" class="btn btn-outline-primary">Ver enlace</a>
-            </div>
-          </div>`;
+      mostrarResultado(json.data);
+      activarDescarga(json.excel_path);
+
+    } catch (err) {
+      console.error("❌ Error inesperado:", err);
+      document.getElementById("loader").style.display = "none";
+      document.getElementById("resultado").innerHTML = "❌ Error inesperado al scrapear.";
+    }
+
+  } else if (tipo === "seguidores") {
+    document.getElementById("loader").style.display = "none"; // Ocultar spinner
+    document.getElementById("barra-progreso-container").style.display = "block"; // Mostrar barra
+    actualizarBarraProgreso(0, maxSeguidores); // Reiniciar barra a 0
+
+    try {
+      const tareaRes = await fetch(`/scrapear/seguidores-info/${username}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ max_seguidores: maxSeguidores })
       });
 
-      resultadoDiv.innerHTML = html;
-    } else {
-      let html = `<div class="card p-3"><h5 class="card-title">${data.nombre || data.usuario || "Usuario"}</h5><ul class="list-group list-group-flush">`;
+      const { tarea_id } = await tareaRes.json();
+      esperarResultado(tarea_id, maxSeguidores);
 
-      for (const key in data) {
-        if (Object.hasOwn(data, key)) {
-          const valor = Array.isArray(data[key]) ? data[key].join(", ") : data[key];
-          html += `<li class="list-group-item"><strong>${key.replace(/_/g, ' ')}:</strong> ${valor}</li>`;
+    } catch (err) {
+      console.error("❌ Error al lanzar tarea:", err);
+      document.getElementById("resultado").innerHTML = "❌ Error al iniciar scraping de seguidores.";
+    }
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  const tipoSelect = document.getElementById("tipo");
+  const grupoMax = document.getElementById("grupo-max-seguidores");
+
+  tipoSelect.addEventListener("change", () => {
+    if (tipoSelect.value === "seguidores") {
+      grupoMax.style.display = "block";
+    } else {
+      grupoMax.style.display = "none";
+    }
+  });
+});
+
+async function esperarResultado(tareaId, maxSeguidores) {
+  let progreso = 0;
+  const progresoInterval = setInterval(() => {
+    if (progreso < maxSeguidores) {
+      progreso++;
+      actualizarBarraProgreso(progreso, maxSeguidores);
+    }
+  }, 2000); // Avanza cada 2 segundos (ajusta si hace falta)
+
+  const check = async () => {
+    try {
+      const res = await fetch(`/resultado-tarea/${tareaId}`);
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`❌ Error HTTP ${res.status}: ${text}`);
+      }
+
+      const json = await res.json();
+
+      if (json.estado === "pendiente") {
+        setTimeout(check, 2000); // volver a consultar
+      } else {
+        clearInterval(progresoInterval);
+        actualizarBarraProgreso(maxSeguidores, maxSeguidores); // Completar barra
+
+        if (json.estado === "error") {
+          document.getElementById("resultado").innerHTML = `❌ ${json.mensaje || "Error en la tarea de scraping."}`;
+        } else if (json.estado === "ok" || json.estado === "completado") {
+          mostrarResultado(json.data);
+          activarDescarga(json.excel_path);
         }
       }
 
-      html += `</ul></div>`;
-      resultadoDiv.innerHTML = html;
+    } catch (err) {
+      clearInterval(progresoInterval);
+      console.error("❌ Error al obtener resultado:", err);
+      document.getElementById("resultado").innerHTML = "❌ Error inesperado al obtener el resultado.";
     }
+  };
 
-    const link = document.getElementById("link-descarga");
-    link.href = json.excel_path;
-    link.download = json.excel_path.split("/").pop();
-    document.getElementById("descarga").style.display = "block";
-
-  } catch (err) {
-    console.error("❌ Error inesperado:", err);
-    document.getElementById("loader").style.display = "none";
-    document.getElementById("resultado").innerHTML = "❌ Error inesperado al scrapear.";
-  }
+  check();
 }
 
-async function toggleHistorial() {
-  const container = document.getElementById("historial-container");
-  if (container.style.display === "none") {
-    await verHistorial();
-    container.style.display = "block";
-  } else {
-    container.style.display = "none";
-  }
+function actualizarBarraProgreso(actual, total) {
+  const porcentaje = Math.min(100, Math.floor((actual / total) * 100));
+  const barra = document.getElementById("barra-progreso");
+  barra.style.width = `${porcentaje}%`;
+  barra.textContent = `${porcentaje}%`;
 }
 
-async function verHistorial() {
-  const res = await fetch("/historial");
-  const data = await res.json();
-  const contenedor = document.getElementById("historial-container");
-  contenedor.innerHTML = "";
+function resetearBarraProgreso() {
+  const barra = document.getElementById("barra-progreso");
+  barra.style.width = "0%";
+  barra.textContent = "0%";
+  document.getElementById("barra-progreso-container").style.display = "none";
+}
 
-  if (!data.historial || data.historial.length === 0) {
-    contenedor.innerHTML = "<p>No hay historial aún.</p>";
+function mostrarResultado(data) {
+  const resultadoDiv = document.getElementById("resultado");
+  if (!data || data.length === 0) {
+    resultadoDiv.innerHTML = "<p>No se encontraron resultados.</p>";
     return;
   }
 
-  const tabla = document.createElement("table");
-  tabla.className = "table table-striped";
-
-  const encabezados = Object.keys(data.historial[0]);
-  const thead = document.createElement("thead");
-  const filaHead = document.createElement("tr");
-  encabezados.forEach(col => {
-    const th = document.createElement("th");
-    th.textContent = col;
-    filaHead.appendChild(th);
-  });
-  thead.appendChild(filaHead);
-  tabla.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-  data.historial.forEach(item => {
-    const fila = document.createElement("tr");
-    encabezados.forEach(col => {
-      const td = document.createElement("td");
-      td.textContent = item[col];
-      fila.appendChild(td);
-    });
-    tbody.appendChild(fila);
+  let html = "";
+  (Array.isArray(data) ? data : [data]).forEach(r => {
+    html += `<div class="card p-3 mb-2"><h5>${r.nombre || r.usuario}</h5><ul class="list-group list-group-flush">`;
+    for (const key in r) {
+      if (Object.hasOwn(r, key)) {
+        const valor = Array.isArray(r[key]) ? r[key].join(", ") : r[key];
+        html += `<li class="list-group-item"><strong>${key.replace(/_/g, ' ')}:</strong> ${valor}</li>`;
+      }
+    }
+    html += "</ul></div>";
   });
 
-  tabla.appendChild(tbody);
-  contenedor.appendChild(tabla);
+  resultadoDiv.innerHTML = html;
 }
 
-async function borrarHistorial() {
-  if (!confirm("¿Seguro que quieres borrar todo el historial?")) return;
-
-  const res = await fetch("/historial", { method: "DELETE" });
-  const data = await res.json();
-  alert(data.message);
-  document.getElementById("historial-container").style.display = "none";
+function activarDescarga(path) {
+  const link = document.getElementById("link-descarga");
+  link.href = path;
+  link.download = path.split("/").pop();
+  document.getElementById("descarga").style.display = "block";
 }

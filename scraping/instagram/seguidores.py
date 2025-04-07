@@ -1,6 +1,11 @@
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+from scraping.instagram.perfil import scrapear_perfil_instagram
+from services.busqueda_cruzada import buscar_contacto
+from exports.exporter import export_to_excel
+from services.history import guardar_historial
 
-def obtener_seguidores(username: str, max_seguidores: int = 10):
+
+def obtener_seguidores(username: str, max_seguidores: int = 3):
     seguidores = []
 
     print(f"🚀 Iniciando extracción de seguidores para: {username}")
@@ -20,40 +25,43 @@ def obtener_seguidores(username: str, max_seguidores: int = 10):
             print("🧭 Buscando botón de seguidores...")
             page.click('a[href$="/followers/"]', timeout=10000)
             print("✅ Clic en botón de seguidores")
-            page.wait_for_timeout(3000)
+            page.wait_for_timeout(6000)  # damos más margen
 
-            print("📦 Localizando el popup de seguidores...")
-            popup = page.locator('div[role="dialog"] ul')
 
-            # Espera activa hasta que haya al menos 1 <li>
-            intentos = 0
-            while popup.locator('li').count() == 0 and intentos < 5:
-                print(f"⏳ Esperando que se carguen seguidores... intento {intentos+1}/5")
-                page.wait_for_timeout(2000)
-                intentos += 1
+            print("🔄 Comenzando scroll + extracción sin esperar a visibilidad...")
 
-            print("🔄 Comenzando scroll para extraer usuarios...")
             intentos_sin_nuevos = 0
-            max_intentos = 5
+            max_intentos = 12
 
             while len(seguidores) < max_seguidores and intentos_sin_nuevos < max_intentos:
-                page.mouse.wheel(0, 2000)
+                # Scroll más robusto
+                page.evaluate('''() => {
+                    const ul = document.querySelector('div[role="dialog"] ul');
+                    if (ul && ul.parentElement) {
+                        ul.parentElement.scrollTop = ul.parentElement.scrollHeight;
+                    }
+                }''')
                 page.wait_for_timeout(1500)
 
-                items = popup.locator('li')
-                count = items.count()
-                print(f"📊 Seguidores detectados hasta ahora: {count}")
+                # Extracción por href
+                items = page.evaluate('''() => {
+                    const lista = [];
+                    const links = document.querySelectorAll('div[role="dialog"] a[href^="/"]');
+                    for (const link of links) {
+                        const href = link.getAttribute("href");
+                        if (href && /^\\/[^\\/]+\\/$/.test(href)) {
+                            lista.push(href.replace(/\\//g, ""));
+                        }
+                    }
+                    return lista;
+                }''')
 
                 nuevos = 0
-                for i in range(len(seguidores), min(count, max_seguidores)):
-                    try:
-                        user = items.nth(i).locator('span a').inner_text()
-                        if user and user not in seguidores:
-                            seguidores.append(user)
-                            nuevos += 1
-                            print(f"👤 Seguidor #{len(seguidores)}: {user}")
-                    except:
-                        continue
+                for user in items:
+                    if user not in seguidores and len(seguidores) < max_seguidores:
+                        seguidores.append(user)
+                        nuevos += 1
+                        print(f"👤 Seguidor #{len(seguidores)}: {user}")
 
                 if nuevos == 0:
                     intentos_sin_nuevos += 1
@@ -72,3 +80,44 @@ def obtener_seguidores(username: str, max_seguidores: int = 10):
             browser.close()
 
     return seguidores
+
+def scrape_followers_info(username: str, max_seguidores: int = 3):
+    print(f"🚀 Scraping de seguidores para: {username}")
+    todos_los_datos = []
+
+    # Obtener lista de seguidores
+    seguidores = obtener_seguidores(username, max_seguidores=max_seguidores)
+
+    if not seguidores:
+        print("⚠️ No se encontraron seguidores.")
+        return []
+
+    for i, usuario in enumerate(seguidores):
+        print(f"🔍 ({i+1}/{len(seguidores)}) Scrapeando seguidor: {usuario}")
+        try:
+            datos = scrapear_perfil_instagram(usuario)
+
+            if not datos.get("email"):
+                print("🔁 Sin email en bio, lanzando búsqueda cruzada del seguidor...")
+                resultado = buscar_contacto(usuario, datos.get("nombre"))
+                if resultado and (resultado.get("email") or resultado.get("telefono")):
+                    datos.update({
+                        "email": resultado.get("email"),
+                        "telefono": resultado.get("telefono"),
+                        "fuente_email": resultado.get("url_fuente"),
+                        "origen": f"{datos.get('origen')} + búsqueda cruzada ({resultado.get('origen')})"
+                    })
+
+            todos_los_datos.append(datos)
+
+        except Exception as e:
+            print(f"❌ Error al scrapear seguidor {usuario}: {e}")
+
+    # Exportar
+    archivo_excel = f"exports/seguidores_{username}.xlsx"
+    export_to_excel(todos_los_datos, archivo_excel)
+
+    # Guardar historial
+    guardar_historial("Instagram - Seguidores", username, "Éxito")
+
+    return todos_los_datos

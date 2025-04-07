@@ -1,17 +1,15 @@
-from playwright.sync_api import sync_playwright
+from scraping.instagram.seguidores import scrape_followers_info
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False)  # Lanzamos navegador visible
-    context = browser.new_context()
+# 🧪 Configuración
+perfil_objetivo = "sofig.oficial"
+max_seguidores = 5
 
-    page = context.new_page()
-    page.goto("https://www.instagram.com/accounts/login/")
+print(f"🔍 Iniciando test de extracción completa de seguidores para: {perfil_objetivo}\n")
 
-    print("🕒 Tienes 30 segundos para iniciar sesión manualmente...")
-    page.wait_for_timeout(30000)  # 30 segundos para iniciar sesión manual
+# Llamamos a la nueva función completa
+datos = scrape_followers_info(perfil_objetivo, max_seguidores=max_seguidores)
 
-    # Guardar sesión ya logueada
-    context.storage_state(path="state.json")
-    print("✅ Sesión guardada como state.json")
-
-    browser.close()
+if datos:
+    print(f"\n✅ Se han scrapeado {len(datos)} perfiles de seguidores correctamente.")
+else:
+    print("⚠️ No se pudo completar la extracción de seguidores.")

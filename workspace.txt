@@ -1,5 +1,6 @@
 fct_scraper_backend/
 ├── app.py
+├── celery_app.py
 ├── scraping/
 │   └── instagram/
 │       ├── __init__.py
@@ -38,7 +39,7 @@ fct_scraper_backend/
 ├── workspace.txt
 ├── Dockerfile
 ├── docker-compose.yml
-├── state.sjon #datos de inicio de sesión de Instagram
+├── state_instagram.sjon #datos de inicio de sesión de Instagram
 ├── README.md
 ├── test_*.py #(todos los archivos de prueba)
 
