@@ -1,52 +1,60 @@
 fct_scraper_backend/
+├── Dockerfile
+├── README.md
 ├── app.py
 ├── celery_app.py
-├── scraping/
-│   └── instagram/
-│       ├── __init__.py
-│       ├── seguidores.py
-│       ├── seguidos.py
-│       └── perfil.py
-│   └── tiktok/
-│       ├── __init__.py
-│       ├── seguidores.py
-│       └── perfil.py
-│   └── telegram/
-│       └── __init__.py
-│   ├── youtube.py #Todos estos archivos son temporales y los vamos a ir sustituyendo por la estructura de carpetas con cola de tareas y scraping de más datos como followers/ees, etc
-│   ├── web.py
-│   ├── facebook.py
-│   ├── x.py
-│   ├── insta.py
-│   ├── tktk.py
-│   └── tel.py
+├── docker-compose.yml
+├── requirements.txt
+├── state_instagram.sjon  # datos de inicio de sesión de Instagram
+├── test_*.py             # (todos los archivos de prueba)
+├── workspace.txt
+
 ├── exports/
 │   └── exporter.py
+
+├── scraping/
+│   ├── facebook.py
+│   ├── insta.py
+│   ├── telegram/
+│   │   └── __init__.py
+│   ├── tel.py
+│   ├── tiktok/
+│   │   ├── __init__.py
+│   │   ├── perfil.py
+│   │   └── seguidores.py
+│   ├── tktk.py
+│   ├── web.py
+│   ├── x.py
+│   ├── youtube.py  # Todos estos archivos son temporales y los vamos a ir sustituyendo por la estructura de carpetas
+│   └── instagram/
+│       ├── __init__.py
+│       ├── perfil.py
+│       ├── seguidores.py
+│       └── seguidos.py
+
 ├── services/
-│   ├── history.py
 │   ├── busqueda_cruzada.py
+│   ├── history.py
 │   └── validator.py
+
+├── static/
+│   ├── css/
+│   │   └── style.css
+│   ├── js/
+│   │   └── main.js
+│   └── index.html
+
 ├── tasks/
 │   ├── __init__.py
-│   ├── instagram.py
-│   └── celery_worker.py
+│   ├── celery_worker.py
+│   └── instagram.py
+
 ├── utils/
 │   ├── __init__.py
-│   ├── proxy_pool.py
 │   ├── proxy_checker.py
+│   ├── proxy_loader.py
+│   ├── proxy_pool.py
+│   ├── proxy_scraper.py
 │   ├── proxies.json
+│   ├── raw_proxies.txt
 │   └── user_agents.py
-├── static/
-│   └── css/
-│       └── style.css
-│   └── js/
-│       └── main.js
-│   └── index.html
-├── requirements.txt
-├── workspace.txt
-├── Dockerfile
-├── docker-compose.yml
-├── state_instagram.sjon #datos de inicio de sesión de Instagram
-├── README.md
-├── test_*.py #(todos los archivos de prueba)
-
