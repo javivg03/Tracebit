@@ -8,8 +8,8 @@ from fastapi.encoders import jsonable_encoder
 from celery_app import celery_app
 import traceback
 
-from scraping.instagram.perfil import scrapear_perfil_instagram
-from tasks.tasks import scrape_followers_info_task, scrape_tiktok_task
+from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback
+from tasks.instagram import scrape_followers_info_task, scrape_followees_info_task
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -21,6 +21,8 @@ class UserInput(BaseModel):
 class SeguidoresRequest(BaseModel):
     max_seguidores: int = 10
 
+class SeguidosRequest(BaseModel):
+    max_seguidos: int = 10
 
 @app.get("/")
 def root():
@@ -31,7 +33,7 @@ def root():
 @app.post("/scrape/instagram")
 async def instagram_scraper(data: UserInput = Body(...)):
     try:
-        datos = await run_in_threadpool(scrapear_perfil_instagram, data.username)
+        datos = await run_in_threadpool(obtener_datos_perfil_instagram_con_fallback, data.username)
 
         return {
             "data": datos,
@@ -43,13 +45,20 @@ async def instagram_scraper(data: UserInput = Body(...)):
         print(traceback.format_exc())
         return JSONResponse(status_code=400, content={"error": f"No se pudo scrapear Instagram: {str(e)}"})
 
-
 # 👥 Scraping completo de seguidores con búsqueda cruzada
 @app.post("/scrapear/seguidores-info/{username}")
 def lanzar_scraping_info_seguidores(username: str, req: SeguidoresRequest = Body(...)):
     tarea = scrape_followers_info_task.delay(username, req.max_seguidores)
     print(f"Tarea lanzada con ID: {tarea.id}, max_seguidores: {req.max_seguidores}")
     return {"mensaje": "Scraping completo de seguidores en curso", "tarea_id": tarea.id}
+
+# 👥 Scraping completo de seguidos con búsqueda cruzada
+@app.post("/scrapear/seguidos-info/{username}")
+def lanzar_scraping_info_seguidos(username: str, req: SeguidosRequest = Body(...)):
+    tarea = scrape_followees_info_task.delay(username, req.max_seguidos)
+    print(f"Tarea lanzada con ID: {tarea.id}, max_seguidos: {req.max_seguidos}")
+    return {"mensaje": "Scraping completo de seguidos en curso", "tarea_id": tarea.id}
+
 
 
 @app.get("/resultado-tarea/{tarea_id}")
@@ -74,10 +83,3 @@ def obtener_resultado_tarea(tarea_id: str):
         print("❌ Excepción al recuperar resultado:", e)
         print(traceback.format_exc())
         return JSONResponse(status_code=500, content={"estado": "error", "mensaje": str(e)})
-
-
-# 🎵 Scraping de perfil de TikTok
-@app.post("/scrapear/tiktok/{username}")
-def lanzar_scraping_tiktok(username: str):
-    tarea = scrape_tiktok_task.delay(username)
-    return {"mensaje": "Scraping de TikTok en curso", "tarea_id": tarea.id}

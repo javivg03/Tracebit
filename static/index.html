@@ -22,13 +22,15 @@
     <select id="tipo" class="form-select w-auto">
       <option value="perfil">Perfil</option>
       <option value="seguidores">Seguidores</option>
+      <option value="seguidos">Seguidos</option>
+
     </select>
 
     <input type="text" id="username" class="form-control my-2" placeholder="Nombre de usuario">
 
-    <!-- input para máximo seguidores -->
+    <!-- input para máximo usuarios a scrapear -->
     <div id="grupo-max-seguidores" style="display: none;">
-      <label class="form-label mt-2">Nº máximo de seguidores a scrapear:</label>
+      <label id="label-max" class="form-label mt-2">Nº máximo de usuarios a scrapear:</label>
       <input type="number" id="max_seguidores" class="form-control w-auto" value="3" min="1" max="10">
     </div>
 

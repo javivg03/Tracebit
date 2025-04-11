@@ -5,6 +5,7 @@ fct_scraper_backend/
 │   └── instagram/
 │       ├── __init__.py
 │       ├── seguidores.py
+│       ├── seguidos.py
 │       └── perfil.py
 │   └── tiktok/
 │       ├── __init__.py
@@ -27,8 +28,14 @@ fct_scraper_backend/
 │   └── validator.py
 ├── tasks/
 │   ├── __init__.py
-│   ├── tasks.py
+│   ├── instagram.py
 │   └── celery_worker.py
+├── utils/
+│   ├── __init__.py
+│   ├── proxy_pool.py
+│   ├── proxy_checker.py
+│   ├── proxies.json
+│   └── user_agents.py
 ├── static/
 │   └── css/
 │       └── style.css

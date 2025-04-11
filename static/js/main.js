@@ -12,8 +12,8 @@ async function scrapear() {
   resetearBarraProgreso();
 
   if (tipo === "perfil") {
-    document.getElementById("loader").style.display = "block";  // Mostrar spinner
-    document.getElementById("barra-progreso-container").style.display = "none"; // Ocultar barra
+    document.getElementById("loader").style.display = "block";
+    document.getElementById("barra-progreso-container").style.display = "none";
 
     try {
       const res = await fetch(`/scrape/${plataforma}`, {
@@ -23,7 +23,7 @@ async function scrapear() {
       });
 
       const json = await res.json();
-      document.getElementById("loader").style.display = "none"; // Ocultar spinner
+      document.getElementById("loader").style.display = "none";
 
       if (!res.ok) {
         document.getElementById("resultado").innerHTML = `❌ ${json.error || "Error al scrapear."}`;
@@ -39,16 +39,20 @@ async function scrapear() {
       document.getElementById("resultado").innerHTML = "❌ Error inesperado al scrapear.";
     }
 
-  } else if (tipo === "seguidores") {
-    document.getElementById("loader").style.display = "none"; // Ocultar spinner
-    document.getElementById("barra-progreso-container").style.display = "block"; // Mostrar barra
-    actualizarBarraProgreso(0, maxSeguidores); // Reiniciar barra a 0
+  } else if (tipo === "seguidores" || tipo === "seguidos") {
+    document.getElementById("loader").style.display = "none";
+    document.getElementById("barra-progreso-container").style.display = "block";
+    actualizarBarraProgreso(0, maxSeguidores);
 
     try {
-      const tareaRes = await fetch(`/scrapear/seguidores-info/${username}`, {
+      const endpoint = tipo === "seguidores"
+        ? `/scrapear/seguidores-info/${username}`
+        : `/scrapear/seguidos-info/${username}`;
+
+      const tareaRes = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ max_seguidores: maxSeguidores })
+        body: JSON.stringify({ max_seguidores: maxSeguidores })  // usamos el mismo campo para ambos
       });
 
       const { tarea_id } = await tareaRes.json();
@@ -56,17 +60,22 @@ async function scrapear() {
 
     } catch (err) {
       console.error("❌ Error al lanzar tarea:", err);
-      document.getElementById("resultado").innerHTML = "❌ Error al iniciar scraping de seguidores.";
+      document.getElementById("resultado").innerHTML = `❌ Error al iniciar scraping de ${tipo}.`;
     }
   }
 }
+
 document.addEventListener("DOMContentLoaded", () => {
   const tipoSelect = document.getElementById("tipo");
   const grupoMax = document.getElementById("grupo-max-seguidores");
+  const labelMax = document.getElementById("label-max");
 
   tipoSelect.addEventListener("change", () => {
-    if (tipoSelect.value === "seguidores") {
+    if (["seguidores", "seguidos"].includes(tipoSelect.value)) {
       grupoMax.style.display = "block";
+      labelMax.textContent = tipoSelect.value === "seguidores"
+        ? "Nº máximo de seguidores a scrapear:"
+        : "Nº máximo de seguidos a scrapear:";
     } else {
       grupoMax.style.display = "none";
     }
@@ -80,7 +89,7 @@ async function esperarResultado(tareaId, maxSeguidores) {
       progreso++;
       actualizarBarraProgreso(progreso, maxSeguidores);
     }
-  }, 2000); // Avanza cada 2 segundos (ajusta si hace falta)
+  }, 2000);
 
   const check = async () => {
     try {
@@ -94,10 +103,11 @@ async function esperarResultado(tareaId, maxSeguidores) {
       const json = await res.json();
 
       if (json.estado === "pendiente") {
-        setTimeout(check, 2000); // volver a consultar
+        setTimeout(check, 2000);
       } else {
         clearInterval(progresoInterval);
-        actualizarBarraProgreso(maxSeguidores, maxSeguidores); // Completar barra
+        actualizarBarraProgreso(maxSeguidores, maxSeguidores);
+        document.getElementById("barra-progreso-container").style.display = "none";
 
         if (json.estado === "error") {
           document.getElementById("resultado").innerHTML = `❌ ${json.mensaje || "Error en la tarea de scraping."}`;
@@ -140,6 +150,8 @@ function mostrarResultado(data) {
 
   let html = "";
   (Array.isArray(data) ? data : [data]).forEach(r => {
+    if (!r.email) return;
+
     html += `<div class="card p-3 mb-2"><h5>${r.nombre || r.usuario}</h5><ul class="list-group list-group-flush">`;
     for (const key in r) {
       if (Object.hasOwn(r, key)) {
@@ -147,10 +159,10 @@ function mostrarResultado(data) {
         html += `<li class="list-group-item"><strong>${key.replace(/_/g, ' ')}:</strong> ${valor}</li>`;
       }
     }
-    html += "</ul></div>";
+    html += `</ul></div>`;
   });
 
-  resultadoDiv.innerHTML = html;
+  resultadoDiv.innerHTML = html || "<p>No se encontraron perfiles con email.</p>";
 }
 
 function activarDescarga(path) {
