@@ -5,27 +5,26 @@ fct_scraper_backend/
 ├── celery_app.py
 ├── docker-compose.yml
 ├── requirements.txt
-├── state_instagram.sjon  # datos de inicio de sesión de Instagram
+├── state_instagram.json  # datos de inicio de sesión de Instagram
 ├── test_*.py             # (todos los archivos de prueba)
 ├── workspace.txt
 
-├── exports/
+├── exports/ #aquí se guardan también los archivos que descargamos
 │   └── exporter.py
 
 ├── scraping/
 │   ├── facebook.py
-│   ├── insta.py
+│   │   └── __init__.py
 │   ├── telegram/
 │   │   └── __init__.py
-│   ├── tel.py
 │   ├── tiktok/
 │   │   ├── __init__.py
 │   │   ├── perfil.py
 │   │   └── seguidores.py
-│   ├── tktk.py
 │   ├── web.py
+│   │   └── __init__.py
 │   ├── x.py
-│   ├── youtube.py  # Todos estos archivos son temporales y los vamos a ir sustituyendo por la estructura de carpetas
+│   │   └── __init__.py
 │   └── instagram/
 │       ├── __init__.py
 │       ├── perfil.py
@@ -33,6 +32,7 @@ fct_scraper_backend/
 │       └── seguidos.py
 
 ├── services/
+│   ├── __init__.py
 │   ├── busqueda_cruzada.py
 │   ├── history.py
 │   └── validator.py
@@ -47,10 +47,12 @@ fct_scraper_backend/
 ├── tasks/
 │   ├── __init__.py
 │   ├── celery_worker.py
-│   └── instagram.py
+│   ├── instagram.py
+│   └── tiktok.py
 
 ├── utils/
 │   ├── __init__.py
+│   ├── playwright_tools.py
 │   ├── proxy_checker.py
 │   ├── proxy_loader.py
 │   ├── proxy_pool.py

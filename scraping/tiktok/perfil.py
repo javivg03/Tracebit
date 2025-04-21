@@ -1,60 +1,55 @@
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
-
+from playwright.sync_api import TimeoutError as PlaywrightTimeout
+from utils.playwright_tools import iniciar_browser_con_proxy
 from services.validator import extraer_emails, extraer_telefonos
+from services.busqueda_cruzada import buscar_contacto
 
-async def scrape_tiktok(entrada):
-    print(f"🚀 Iniciando scraping de TikTok con Playwright para: {entrada}")
+
+def obtener_datos_perfil_tiktok(username: str) -> dict:
+    print(f"🚀 Iniciando scraping de perfil TikTok para: {username}")
+
     urls = [
-        f"https://www.tiktok.com/@{entrada}",
-        f"https://www.tiktok.com/search?q={quote_plus(entrada)}"
+        f"https://www.tiktok.com/@{username}",
+        f"https://www.tiktok.com/search?q={quote_plus(username)}"
     ]
+
     resultado = None
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context()
-        page = await context.new_page()
+    try:
+        playwright, browser, context, proxy = iniciar_browser_con_proxy()
+        print(f"🧩 Proxy elegido: {proxy}")
+        page = context.new_page()
 
         for url in urls:
             try:
                 print(f"🌐 Visitando: {url}")
-                await page.goto(url, timeout=15000)
-                await page.wait_for_timeout(4000)
+                page.goto(url, timeout=20000)
+                page.wait_for_timeout(3000)
 
-                # Intentar extraer la bio, si existe
-                bio = ""
+                # Extraer bio
                 try:
-                    bio_element = page.locator('[data-e2e="user-bio"]')
-                    await bio_element.wait_for(timeout=5000)
-                    bio = await bio_element.inner_text()
-                except PlaywrightTimeoutError:
+                    bio = page.locator('[data-e2e="user-bio"]').first.inner_text(timeout=3000)
+                except PlaywrightTimeout:
                     bio = ""
 
-                # Obtener el HTML y extraer el nombre usando BeautifulSoup
-                html = await page.content()
+                # Extraer nombre
+                html = page.content()
                 soup = BeautifulSoup(html, "html.parser")
                 nombre_tag = soup.find("h2")
-                nombre = nombre_tag.get_text(strip=True) if nombre_tag else entrada
+                nombre = nombre_tag.get_text(strip=True) if nombre_tag else username
 
-                # Extraer email y teléfono desde la bio
                 emails = extraer_emails(bio)
                 email = emails[0] if emails else None
                 fuente_email = url if email else None
-
                 telefonos = extraer_telefonos(bio)
                 telefono = telefonos[0] if telefonos else None
-
-                # Extraer hashtags (si los hay)
-                hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")] if bio else []
-
+                hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
                 origen = "bio" if email else "no_email"
 
-                # Crear el diccionario de resultado
                 resultado = {
                     "nombre": nombre,
-                    "usuario": entrada,
+                    "usuario": username,
                     "email": email,
                     "fuente_email": fuente_email,
                     "telefono": telefono,
@@ -64,27 +59,52 @@ async def scrape_tiktok(entrada):
                     "origen": origen
                 }
 
-                # Si se encuentra un email válido, se interrumpe el bucle
                 if email:
-                    print("✅ Email encontrado, terminando búsqueda en TikTok.")
+                    print("✅ Email encontrado, saliendo del bucle de URLs.")
                     break
+
             except Exception as e:
                 print(f"⚠️ Error al procesar {url}: {e}")
                 continue
 
-        await browser.close()
+        browser.close()
+        playwright.stop()
 
-    # Si no se obtuvo ningún resultado, se retorna un diccionario con error
-    if resultado is None:
+    except Exception as e:
+        print(f"❌ Error general durante scraping de TikTok: {e}")
+        resultado = None
+
+    if resultado and resultado.get("email"):
+        return resultado
+
+    return fallback_tiktok(username, resultado.get("nombre") if resultado else None)
+
+
+def fallback_tiktok(username: str, nombre: str = None) -> dict:
+    print("🔍 Lanzando búsqueda cruzada...")
+    resultado = buscar_contacto(username, nombre or username)
+
+    if resultado:
         return {
-            "nombre": None,
-            "usuario": entrada,
-            "email": None,
-            "fuente_email": None,
-            "telefono": None,
+            "nombre": resultado.get("nombre") or username,
+            "usuario": username,
+            "email": resultado.get("email"),
+            "telefono": resultado.get("telefono"),
+            "fuente_email": resultado.get("url_fuente"),
             "seguidores": None,
             "seguidos": None,
             "hashtags": [],
-            "origen": "error"
+            "origen": f"búsqueda cruzada ({resultado.get('origen')})"
         }
-    return resultado
+
+    return {
+        "nombre": None,
+        "usuario": username,
+        "email": None,
+        "fuente_email": None,
+        "telefono": None,
+        "seguidores": None,
+        "seguidos": None,
+        "hashtags": [],
+        "origen": "error"
+    }
