@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, APIRouter, Body
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -17,10 +17,11 @@ from tasks.tiktok import scrape_followers_info_tiktok_task
 from exports.exporter import export_to_excel
 from services.history import guardar_historial
 
+# ========== FASTAPI APP SETUP ==========
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
+# ========== Pydantic Models ==========
 class UserInput(BaseModel):
     username: str
 
@@ -30,77 +31,48 @@ class SeguidoresRequest(BaseModel):
 class SeguidosRequest(BaseModel):
     max_seguidos: int = 10
 
+# ========== Reutilizable scraping handler ==========
+async def procesar_scraping(username: str, red: str, funcion_scraper):
+    datos = await run_in_threadpool(funcion_scraper, username)
 
-@app.get("/")
-def root():
-    return FileResponse("static/index.html")
+    if datos and datos.get("email"):
+        path = f"exports/{red}_{username}.xlsx"
+        export_to_excel([datos], path)
+        guardar_historial(f"{red.capitalize()} - Perfil", username, "Éxito")
+        return {"data": datos, "excel_path": f"/download/{red}_{username}.xlsx"}
 
+    return {"data": datos, "excel_path": None}
 
-# 🔍 Scraping directo de perfil de Instagram (con exportación e historial)
-@app.post("/scrape/instagram")
+# ========== Instagram Endpoints ==========
+router_instagram = APIRouter(prefix="/instagram")
+
+@router_instagram.post("/perfil")
 async def instagram_scraper(data: UserInput = Body(...)):
-    try:
-        datos = await run_in_threadpool(obtener_datos_perfil_instagram_con_fallback, data.username)
+    return await procesar_scraping(data.username, "instagram", obtener_datos_perfil_instagram_con_fallback)
 
-        if datos and datos.get("email"):
-            path = f"exports/instagram_{data.username}.xlsx"
-            export_to_excel([datos], path)
-            guardar_historial("Instagram - Perfil", data.username, "Éxito")
-            return {"data": datos, "excel_path": f"/download/instagram_{data.username}.xlsx"}
-
-        return {"data": datos, "excel_path": None}
-
-    except Exception as e:
-        print("❌ Error en /scrape/instagram:")
-        print(traceback.format_exc())
-        return JSONResponse(status_code=400, content={"error": f"No se pudo scrapear Instagram: {str(e)}"})
-
-
-# 🔍 Scraping directo de perfil de TikTok (con exportación e historial)
-@app.post("/scrape/tiktok")
-async def tiktok_scraper(data: UserInput = Body(...)):
-    try:
-        datos = await run_in_threadpool(obtener_datos_perfil_tiktok, data.username)
-
-        if datos and datos.get("email"):
-            path = f"exports/tiktok_{data.username}.xlsx"
-            export_to_excel([datos], path)
-            guardar_historial("TikTok - Perfil", data.username, "Éxito")
-            return {"data": datos, "excel_path": f"/download/tiktok_{data.username}.xlsx"}
-
-        return {"data": datos, "excel_path": None}
-
-    except Exception as e:
-        print("❌ Error en /scrape/tiktok:")
-        print(traceback.format_exc())
-        return JSONResponse(status_code=400, content={"error": f"No se pudo scrapear TikTok: {str(e)}"})
-
-
-# 👥 Scraping completo de seguidores de Instagram (task)
-@app.post("/scrapear/seguidores-info/{username}")
-def lanzar_scraping_info_seguidores(username: str, req: SeguidoresRequest = Body(...)):
-    tarea = scrape_followers_info_task.delay(username, req.max_seguidores)
-    print(f"Tarea lanzada con ID: {tarea.id}, max_seguidores: {req.max_seguidores}")
+@router_instagram.post("/seguidores")
+def lanzar_scraping_info_seguidores(data: UserInput = Body(...), req: SeguidoresRequest = Body(...)):
+    tarea = scrape_followers_info_task.delay(data.username, req.max_seguidores)
     return {"mensaje": "Scraping completo de seguidores en curso", "tarea_id": tarea.id}
 
-
-# 👥 Scraping completo de seguidos de Instagram (task)
-@app.post("/scrapear/seguidos-info/{username}")
-def lanzar_scraping_info_seguidos(username: str, req: SeguidosRequest = Body(...)):
-    tarea = scrape_followees_info_task.delay(username, req.max_seguidos)
-    print(f"Tarea lanzada con ID: {tarea.id}, max_seguidos: {req.max_seguidos}")
+@router_instagram.post("/seguidos")
+def lanzar_scraping_info_seguidos(data: UserInput = Body(...), req: SeguidosRequest = Body(...)):
+    tarea = scrape_followees_info_task.delay(data.username, req.max_seguidos)
     return {"mensaje": "Scraping completo de seguidos en curso", "tarea_id": tarea.id}
 
+# ========== TikTok Endpoints ==========
+router_tiktok = APIRouter(prefix="/tiktok")
 
-# 👥 Scraping completo de seguidores de TikTok (task)
-@app.post("/scrapear/seguidores-info-tiktok/{username}")
-def lanzar_scraping_info_seguidores_tiktok(username: str, req: SeguidoresRequest = Body(...)):
-    tarea = scrape_followers_info_tiktok_task.delay(username, req.max_seguidores)
-    print(f"Tarea lanzada con ID: {tarea.id}, max_seguidores: {req.max_seguidores}")
+@router_tiktok.post("/perfil")
+async def tiktok_scraper(data: UserInput = Body(...)):
+    return await procesar_scraping(data.username, "tiktok", obtener_datos_perfil_tiktok)
+
+@router_tiktok.post("/seguidores")
+def lanzar_scraping_info_seguidores_tiktok(data: UserInput = Body(...), req: SeguidoresRequest = Body(...)):
+    tarea = scrape_followers_info_tiktok_task.delay(data.username, req.max_seguidores)
     return {"mensaje": "Scraping completo de seguidores de TikTok en curso", "tarea_id": tarea.id}
 
-
-# 🔎 Obtener resultado de cualquier tarea
+# ========== Task result checker ==========
 @app.get("/resultado-tarea/{tarea_id}")
 def obtener_resultado_tarea(tarea_id: str):
     resultado = AsyncResult(tarea_id, app=celery_app)
@@ -115,10 +87,26 @@ def obtener_resultado_tarea(tarea_id: str):
 
     try:
         datos = resultado.get()
-        print(f"✅ Resultado obtenido correctamente: {type(datos)}")
+        if not datos:
+            return {"estado": "sin_datos", "mensaje": "La tarea no devolvió información válida"}
+
         return JSONResponse(content=jsonable_encoder(datos))
 
     except Exception as e:
         print("❌ Excepción al recuperar resultado:", e)
         print(traceback.format_exc())
         return JSONResponse(status_code=500, content={"estado": "error", "mensaje": str(e)})
+
+# ========== Static HTML ==========
+@app.get("/")
+def root():
+    return FileResponse("static/index.html")
+
+# ========== Include Routers ==========
+app.include_router(router_instagram)
+app.include_router(router_tiktok)
+# ⚠️ Cuando crees Telegram, Facebook, etc. solo añade su router aquí
+# app.include_router(router_telegram)
+# app.include_router(router_facebook)
+# app.include_router(router_youtube)
+# app.include_router(router_x)

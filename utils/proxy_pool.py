@@ -5,11 +5,15 @@ from utils.proxy_checker import check_proxy
 
 PROXY_FILE = "utils/proxies.json"
 
+
 class ProxyPool:
-    def __init__(self, proxy_file: str = PROXY_FILE):
+    def __init__(self, proxy_file: str = PROXY_FILE, validar_al_cargar: bool = False): #Activamos si queremos verificar automaticamente
         self.proxy_file = proxy_file
         self.proxies: List[str] = []
         self.load_proxies()
+
+        if validar_al_cargar:
+            self.validate_all()
 
     def load_proxies(self):
         try:

@@ -1,14 +1,20 @@
-from playwright.sync_api import TimeoutError
+from playwright.sync_api import sync_playwright, TimeoutError
 from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback
-from utils.proxy_pool import ProxyPool
-from utils.playwright_tools import iniciar_browser_con_proxy
+# from utils.proxy_pool import ProxyPool
+# from utils.playwright_tools import iniciar_browser_con_proxy
 
 def obtener_seguidores(username: str, max_seguidores: int = 3):
     seguidores = []
     print(f"🚀 Iniciando extracción de seguidores para: {username}")
 
     try:
-        playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
+        # ⛔ Uso de proxy desactivado temporalmente
+        # playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
+
+        # ✅ Modo sin proxy (con tu IP)
+        playwright = sync_playwright().start()
+        browser = playwright.chromium.launch(headless=True)
+        context = browser.new_context(storage_state="state_instagram.json")
         page = context.new_page()
 
         print("🌐 Accediendo al perfil...")
@@ -63,18 +69,19 @@ def obtener_seguidores(username: str, max_seguidores: int = 3):
 
     except TimeoutError as e:
         print(f"❌ Timeout al interactuar con la página: {e}")
-        if proxy:
-            ProxyPool().remove_proxy(proxy)
+        # if proxy:
+        #     ProxyPool().remove_proxy(proxy)
     except Exception as e:
         print(f"❌ Error inesperado durante el scraping: {e}")
-        if proxy:
-            ProxyPool().remove_proxy(proxy)
+        # if proxy:
+        #     ProxyPool().remove_proxy(proxy)
     finally:
         print("🪩 Cerrando navegador...")
         browser.close()
         playwright.stop()
 
     return seguidores
+
 
 def scrape_followers_info(username: str, max_seguidores: int = 3):
     print(f"🚀 Scraping de seguidores para: {username}")

@@ -1,7 +1,7 @@
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
-from playwright.sync_api import TimeoutError as PlaywrightTimeout
-from utils.playwright_tools import iniciar_browser_con_proxy
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+# from utils.playwright_tools import iniciar_browser_con_proxy
 from services.validator import extraer_emails, extraer_telefonos
 from services.busqueda_cruzada import buscar_contacto
 
@@ -17,8 +17,14 @@ def obtener_datos_perfil_tiktok(username: str) -> dict:
     resultado = None
 
     try:
-        playwright, browser, context, proxy = iniciar_browser_con_proxy()
-        print(f"🧩 Proxy elegido: {proxy}")
+        # ⛔ Desactivado proxy temporalmente
+        # playwright, browser, context, proxy = iniciar_browser_con_proxy()
+        # print(f"🧩 Proxy elegido: {proxy}")
+
+        # ✅ Modo sin proxy
+        playwright = sync_playwright().start()
+        browser = playwright.chromium.launch(headless=True)
+        context = browser.new_context()
         page = context.new_page()
 
         for url in urls:

@@ -1,6 +1,6 @@
 from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback
-from utils.playwright_tools import iniciar_browser_con_proxy
-from playwright.sync_api import TimeoutError
+# from utils.playwright_tools import iniciar_browser_con_proxy
+from playwright.sync_api import sync_playwright, TimeoutError
 
 
 def obtener_seguidos(username: str, max_seguidos: int = 3):
@@ -8,8 +8,14 @@ def obtener_seguidos(username: str, max_seguidos: int = 3):
     print(f"🚀 Iniciando extracción de seguidos para: {username}")
 
     try:
-        playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
-        print(f"🧩 Proxy elegido para seguidos: {proxy}")
+        # ⛔ Proxy desactivado temporalmente
+        # playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
+        # print(f"🧩 Proxy elegido para seguidos: {proxy}")
+
+        # ✅ Modo sin proxy, usando tu IP
+        playwright = sync_playwright().start()
+        browser = playwright.chromium.launch(headless=True)
+        context = browser.new_context(storage_state="state_instagram.json")
         page = context.new_page()
 
         print("🌐 Accediendo al perfil...")

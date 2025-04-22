@@ -1,24 +1,25 @@
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 from scraping.tiktok.perfil import obtener_datos_perfil_tiktok
-from utils.proxy_pool import ProxyPool
+# from utils.proxy_pool import ProxyPool  # ⛔ Desactivado temporalmente
 
 
 async def obtener_seguidores_tiktok(username: str, max_seguidores: int = 3):
     seguidores = []
     print(f"🚀 Iniciando extracción de seguidores TikTok para: {username}")
 
-    pool = ProxyPool()
-    proxy = pool.get_random_proxy()
+    # pool = ProxyPool()
+    # proxy = pool.get_random_proxy()
 
-    if not proxy:
-        print("❌ No hay proxies disponibles.")
-        return []
+    # if not proxy:
+    #     print("❌ No hay proxies disponibles.")
+    #     return []
 
-    print(f"🧩 Proxy elegido: {proxy}")
+    # print(f"🧩 Proxy elegido: {proxy}")
 
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, proxy={"server": proxy})
+            # ✅ Sin proxy
+            browser = await p.chromium.launch(headless=True)
             context = await browser.new_context()
             page = await context.new_page()
 
@@ -47,7 +48,7 @@ async def obtener_seguidores_tiktok(username: str, max_seguidores: int = 3):
 
             except Exception as e:
                 print(f"❌ Error al navegar o extraer seguidores: {e}")
-                pool.remove_proxy(proxy)
+                # pool.remove_proxy(proxy)
 
             finally:
                 print("🧹 Cerrando navegador...")
@@ -59,7 +60,7 @@ async def obtener_seguidores_tiktok(username: str, max_seguidores: int = 3):
 
     except Exception as e:
         print(f"❌ Error general durante Playwright: {e}")
-        pool.remove_proxy(proxy)
+        # pool.remove_proxy(proxy)
 
     return seguidores
 

@@ -3,148 +3,19 @@ from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
 from googlesearch import search as google_search
 from duckduckgo_search import DDGS
-import concurrent.futures
 
 from services.validator import extraer_emails, extraer_telefonos
-from scraping.insta import extraer_datos_relevantes as scrape_instagram
-#from scraping.telegram import scrape_telegram
 
 
 # ===============================
-# FUNCIONES QUE USAN TUS SCRAPERS (LOS QUE NO USAN PLAYWRIGHT)
+# FUNCIONES DE ANÁLISIS EXTERNAS
 # ===============================
 
-def buscar_contacto_en_instagram(username):
-    try:
-        resultado = scrape_instagram(username)
-        if resultado.get("email") or resultado.get("telefono"):
-            return {
-                "email": resultado.get("email"),
-                "telefono": resultado.get("telefono"),
-                "origen": "instagram",
-                "url_fuente": resultado.get("fuente_email")
-            }
-    except Exception:
-        pass
-    return None
-
-
-def buscar_contacto_en_telegram(username):
-    try:
-        resultado = scrape_telegram(username)
-        if resultado.get("email") or resultado.get("telefono"):
-            return {
-                "email": resultado.get("email"),
-                "telefono": resultado.get("telefono"),
-                "origen": "telegram",
-                "url_fuente": resultado.get("fuente_email")
-            }
-    except Exception:
-        pass
-    return None
-
-
-# ===============================
-# FUENTES EXTERNAS (NO SCRAPERS PROPIOS)
-# ===============================
-
-def buscar_contacto_en_github(username):
-    url = f"https://github.com/{username}"
+def analizar_url_contacto(url, origen="externo"):
     try:
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
             text = BeautifulSoup(res.text, "html.parser").get_text(separator=" ", strip=True)
-            emails = extraer_emails(text)
-            telefonos = extraer_telefonos(text)
-            if emails or telefonos:
-                return {
-                    "email": emails[0] if emails else None,
-                    "telefono": telefonos[0] if telefonos else None,
-                    "origen": "github",
-                    "url_fuente": url
-                }
-    except Exception:
-        pass
-    return None
-
-
-def buscar_contacto_en_aboutme(username):
-    url = f"https://about.me/{username}"
-    try:
-        res = requests.get(url, timeout=5)
-        if res.status_code == 200:
-            text = BeautifulSoup(res.text, "html.parser").get_text(separator=" ", strip=True)
-            emails = extraer_emails(text)
-            telefonos = extraer_telefonos(text)
-            if emails or telefonos:
-                return {
-                    "email": emails[0] if emails else None,
-                    "telefono": telefonos[0] if telefonos else None,
-                    "origen": "aboutme",
-                    "url_fuente": url
-                }
-    except Exception:
-        pass
-    return None
-
-
-def buscar_contacto_en_medium(username):
-    url = f"https://medium.com/@{username}"
-    try:
-        res = requests.get(url, timeout=5)
-        if res.status_code == 200:
-            text = BeautifulSoup(res.text, "html.parser").get_text(separator=" ", strip=True)
-            emails = extraer_emails(text)
-            telefonos = extraer_telefonos(text)
-            if emails or telefonos:
-                return {
-                    "email": emails[0] if emails else None,
-                    "telefono": telefonos[0] if telefonos else None,
-                    "origen": "medium",
-                    "url_fuente": url
-                }
-    except Exception:
-        pass
-    return None
-
-
-# ===============================
-# MOTORES DE BÚSQUEDA EXTERNOS
-# ===============================
-
-def buscar_contacto_en_duckduckgo(query, max_urls=5):
-    print(f"🔍 DuckDuckGo → {query}")
-    with DDGS() as ddgs:
-        resultados = ddgs.text(query, region="es-es", safesearch="Moderate", max_results=max_urls)
-        for resultado in resultados:
-            url = resultado.get("href") or resultado.get("url")
-            if not url:
-                continue
-            try:
-                html = requests.get(url, timeout=5).text
-                text = BeautifulSoup(html, "html.parser").get_text(separator=" ", strip=True)
-                emails = extraer_emails(text)
-                telefonos = extraer_telefonos(text)
-                if emails or telefonos:
-                    return {
-                        "email": emails[0] if emails else None,
-                        "telefono": telefonos[0] if telefonos else None,
-                        "url_fuente": url,
-                        "origen": "duckduckgo"
-                    }
-            except Exception:
-                continue
-    return None
-
-
-def buscar_contacto_en_google(username, nombre_completo=None, max_urls=5):
-    query = f'"{nombre_completo or username}" contacto OR email OR teléfono OR "sitio web"'
-    print(f"🔍 Google → {query}")
-    resultados = google_search(query, num_results=max_urls, lang="es")
-    for url in resultados:
-        try:
-            html = requests.get(url, timeout=5).text
-            text = BeautifulSoup(html, "html.parser").get_text(separator=" ", strip=True)
             emails = extraer_emails(text)
             telefonos = extraer_telefonos(text)
             if emails or telefonos:
@@ -152,87 +23,145 @@ def buscar_contacto_en_google(username, nombre_completo=None, max_urls=5):
                     "email": emails[0] if emails else None,
                     "telefono": telefonos[0] if telefonos else None,
                     "url_fuente": url,
-                    "origen": "google"
+                    "origen": origen
                 }
-        except Exception:
-            continue
-    return {"email": None, "telefono": None, "url_fuente": None, "origen": "no_encontrado"}
-
-
-def buscar_contacto_en_yahoo(username, nombre_completo=None, max_urls=5):
-    # Ejemplo de integración con Yahoo search (se usa el motor de búsqueda de Yahoo mediante una query HTTP)
-    query = f'"{nombre_completo or username}" contacto OR email OR teléfono'
-    url_search = f"https://es.search.yahoo.com/search?p={quote_plus(query)}"
-    print(f"🔍 Yahoo → {query}")
-    try:
-        res = requests.get(url_search, timeout=5)
-        if res.status_code == 200:
-            text = BeautifulSoup(res.text, "html.parser").get_text(separator=" ", strip=True)
-            emails = extraer_emails(text)
-            telefonos = extraer_telefonos(text)
-            if emails or telefonos:
-                return {
-                    "email": emails[0] if emails else None,
-                    "telefono": telefonos[0] if telefonos else None,
-                    "url_fuente": url_search,
-                    "origen": "yahoo"
-                }
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"❌ Error accediendo a {url}: {e}")
     return None
 
 
 # ===============================
-# FUNCIÓN PRINCIPAL DE BÚSQUEDA CRUZADA CON EJECUCIÓN CONCURRENTE Y PRIORIDADES
+# PLATAFORMAS EXTERNAS PÚBLICAS
 # ===============================
 
-# Asignamos prioridades (mayor valor indica mayor confiabilidad)
-PRIORIDADES = {
-    "instagram": 10,
-    "telegram": 9,
-    "github": 7,
-    "aboutme": 6,
-    "medium": 6,
-    "duckduckgo": 4,
-    "google": 4,
-    "yahoo": 3
-}
+def buscar_contacto_en_github(username):
+    return analizar_url_contacto(f"https://github.com/{username}", "github")
+
+def buscar_contacto_en_aboutme(username):
+    return analizar_url_contacto(f"https://about.me/{username}", "aboutme")
+
+def buscar_contacto_en_medium(username):
+    return analizar_url_contacto(f"https://medium.com/@{username}", "medium")
 
 
-def buscar_contacto(username, nombre_completo=None):
-    """
-    Ejecuta varias estrategias de búsqueda cruzada concurrentemente para obtener email y teléfono.
-    """
-    print("🔎 Iniciando búsqueda cruzada (sin Playwright)...")
+# ===============================
+# BUSCADORES GENERALES
+# ===============================
 
-    estrategias = [
-        buscar_contacto_en_instagram,
-        buscar_contacto_en_telegram,
-        buscar_contacto_en_github,
-        buscar_contacto_en_aboutme,
-        buscar_contacto_en_medium,
-        lambda u: buscar_contacto_en_duckduckgo(nombre_completo or username),
-        lambda u: buscar_contacto_en_google(u, nombre_completo),
-        lambda u: buscar_contacto_en_yahoo(u, nombre_completo)
-    ]
+def buscar_contacto_en_duckduckgo(query, max_urls=5):
+    print(f"🦆 DuckDuckGo → {query}")
+    with DDGS() as ddgs:
+        for resultado in ddgs.text(query, max_results=max_urls):
+            url = resultado.get("href") or resultado.get("url")
+            if url:
+                datos = analizar_url_contacto(url, "duckduckgo")
+                if datos:
+                    return datos
+    return None
 
-    resultados = []
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Lanzamos todas las estrategias en paralelo
-        futures = {executor.submit(estrategia, username): estrategia for estrategia in estrategias}
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                res = future.result()
-                if res and (res.get("email") or res.get("telefono")):
-                    resultados.append(res)
-            except Exception:
-                continue
+def buscar_contacto_en_google(query, max_urls=5):
+    print(f"🔍 Google → {query}")
+    try:
+        resultados = google_search(query, num_results=max_urls, lang="es")
+        for url in resultados:
+            datos = analizar_url_contacto(url, "google")
+            if datos:
+                return datos
+    except Exception as e:
+        print(f"❌ Error en Google Search: {e}")
+    return None
 
-    if resultados:
-        # Seleccionamos el resultado con la mayor prioridad
-        resultados.sort(key=lambda r: PRIORIDADES.get(r.get("origen"), 0), reverse=True)
-        mejor_resultado = resultados[0]
-        print(f"✅ Resultado seleccionado: {mejor_resultado}")
-        return mejor_resultado
+def buscar_contacto_en_yahoo(query):
+    print(f"🟣 Yahoo → {query}")
+    url_search = f"https://es.search.yahoo.com/search?p={quote_plus(query)}"
+    return analizar_url_contacto(url_search, "yahoo")
 
-    return {"email": None, "telefono": None, "url_fuente": None, "origen": "no_encontrado"}
+
+# ===============================
+# FUNCIÓN PRINCIPAL DE BÚSQUEDA CRUZADA
+# ===============================
+
+def buscar_contacto(username, nombre_completo=None, origen_actual=None):
+    print(f"🔎 Iniciando búsqueda cruzada (origen: {origen_actual})")
+
+    # Paso 1 – Redes sociales propias (excluyendo la actual)
+
+    redes_propias = []
+
+    # TikTok
+    if origen_actual != "tiktok":
+        try:
+            from scraping.tiktok.perfil import obtener_datos_perfil_tiktok
+            redes_propias.append(obtener_datos_perfil_tiktok)
+        except ImportError:
+            print("ℹ️ Scraper TikTok no disponible.")
+
+    # Telegram
+    if origen_actual != "telegram":
+        try:
+            from scraping.telegram.perfil import obtener_datos_perfil_telegram
+            redes_propias.append(obtener_datos_perfil_telegram)
+        except ImportError:
+            print("ℹ️ Scraper Telegram no disponible.")
+
+    # Facebook
+    if origen_actual != "facebook":
+        try:
+            from scraping.facebook.perfil import obtener_datos_perfil_facebook
+            redes_propias.append(obtener_datos_perfil_facebook)
+        except ImportError:
+            print("ℹ️ Scraper Facebook no disponible.")
+
+    # X (Twitter)
+    if origen_actual != "x":
+        try:
+            from scraping.x.perfil import obtener_datos_perfil_x
+            redes_propias.append(obtener_datos_perfil_x)
+        except ImportError:
+            print("ℹ️ Scraper X (Twitter) no disponible.")
+
+    # YouTube
+    if origen_actual != "youtube":
+        try:
+            from scraping.youtube.perfil import obtener_datos_perfil_youtube
+            redes_propias.append(obtener_datos_perfil_youtube)
+        except ImportError:
+            print("ℹ️ Scraper YouTube no disponible.")
+
+
+    for funcion in redes_propias:
+        try:
+            datos = funcion(username)
+            if datos and (datos.get("email") or datos.get("telefono")):
+                print(f"✅ Contacto encontrado en {funcion.__name__}")
+                return {
+                    "email": datos.get("email"),
+                    "telefono": datos.get("telefono"),
+                    "url_fuente": datos.get("fuente_email"),
+                    "origen": datos.get("origen"),
+                    "nombre": datos.get("nombre")
+                }
+        except Exception as e:
+            print(f"⚠️ Error en fallback con {funcion.__name__}: {e}")
+
+    # Paso 2 – Plataformas personales públicas
+    for funcion in [buscar_contacto_en_github, buscar_contacto_en_aboutme, buscar_contacto_en_medium]:
+        try:
+            datos = funcion(username)
+            if datos:
+                return datos
+        except Exception:
+            continue
+
+    # Paso 3 – Motores de búsqueda generales
+    query = f'"{nombre_completo or username}" contacto OR email OR teléfono OR "sitio web"'
+    for buscador in [buscar_contacto_en_duckduckgo, buscar_contacto_en_google, buscar_contacto_en_yahoo]:
+        try:
+            datos = buscador(query)
+            if datos:
+                return datos
+        except Exception:
+            continue
+
+    print("❌ No se encontró información de contacto.")
+    return {"email": None, "telefono": None, "url_fuente": None, "origen": "no_encontrado", "nombre": None}

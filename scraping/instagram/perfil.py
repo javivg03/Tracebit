@@ -1,9 +1,11 @@
 from services.busqueda_cruzada import buscar_contacto
 from services.validator import extraer_emails, extraer_telefonos
 from utils.user_agents import random_user_agent
-from utils.proxy_pool import ProxyPool
-from utils.playwright_tools import iniciar_browser_con_proxy
 import instaloader
+from playwright.sync_api import sync_playwright
+# from utils.proxy_pool import ProxyPool
+
+# ⚠️ Proxies desactivados temporalmente para pruebas locales
 
 def scrapear_perfil_instagram_instaloader(username: str):
     print(f"📅 Intentando scrapear perfil con Instaloader: {username}")
@@ -11,28 +13,24 @@ def scrapear_perfil_instagram_instaloader(username: str):
     user_agent = random_user_agent()
     print(f"🕵️ User-Agent elegido: {user_agent}")
 
-    pool = ProxyPool()
-    proxy = pool.get_random_proxy()
-
-    if not proxy:
-        print("❌ No hay proxies disponibles para Instaloader.")
-        return None
-
-    print(f"🧩 Proxy elegido para Instaloader: {proxy}")
+    # proxy = None  # Desactivamos proxies
+    # print("❌ No hay proxies disponibles para Instaloader.")
+    # return None
 
     insta_loader = instaloader.Instaloader(user_agent=user_agent)
-    # ⚠️ Acceso a _session porque Instaloader no permite configurar proxies de otra forma
-    insta_loader.context._session.proxies = {
-        "http": proxy,
-        "https": proxy
-    }
+
+    # ❌ No usar proxy:
+    # insta_loader.context._session.proxies = {
+    #     "http": proxy,
+    #     "https": proxy
+    # }
 
     try:
         insta_loader.load_session_from_file("pruebasrc1")
         print("✅ Sesión de Instagram cargada")
     except Exception as e:
         print(f"⚠️ No se pudo cargar la sesión: {e}")
-        pool.remove_proxy(proxy)
+        # pool.remove_proxy(proxy)
 
     try:
         profile = instaloader.Profile.from_username(insta_loader.context, username)
@@ -71,72 +69,55 @@ def scrapear_perfil_instagram_instaloader(username: str):
         return None
 
 
-def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 5):
-    print(f"🔍 Intentando scraping de perfil con Playwright: {username}")
+from playwright.sync_api import sync_playwright
+
+def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 1):
+    print(f"🔍 [Playwright] Intentando scraping de perfil: {username}", flush=True)
 
     for intento in range(max_intentos):
-        print(f"🔁 Intento {intento+1}/{max_intentos} para acceder al perfil...")
+        print(f"🔁 Intento {intento+1}/{max_intentos}", flush=True)
 
         try:
-            playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
-            print(f"🧩 Proxy elegido: {proxy}")
+            print("🚀 Lanzando Playwright...", flush=True)
+            with sync_playwright() as playwright:
+                print("✅ Playwright lanzado", flush=True)
 
-            page = context.new_page()
+                browser = playwright.chromium.launch(headless=True)
+                context = browser.new_context(storage_state="state_instagram.json")
+                page = context.new_page()
 
-            try:
-                page.goto(f"https://www.instagram.com/{username}/", timeout=60000)
-                page.wait_for_timeout(3000)
+                print("🌐 Navegando a la URL del perfil...", flush=True)
+                page.goto(f"https://www.instagram.com/{username}/", timeout=20000)
+                print("✅ Página cargada correctamente", flush=True)
 
+                page.wait_for_timeout(2000)
+
+                print("🔍 Intentando localizar nombre", flush=True)
                 nombre = page.locator("header h2, header h1").first.inner_text(timeout=3000)
-                bio = page.locator("section div.-vDIg span").first.inner_text(timeout=3000)
+                print(f"🧾 Nombre: {nombre}", flush=True)
 
-                seguidores_text = page.locator("ul li:nth-child(2) span").first.get_attribute("title")
-                seguidos_text = page.locator("ul li:nth-child(3) span").first.inner_text()
+                print("🔍 Intentando localizar bio", flush=True)
+                bio = page.locator('span._ap3a').first.inner_text(timeout=3000)
+                print(f"📜 Bio: {bio[:60]}...", flush=True)
 
-                try:
-                    seguidores = int(seguidores_text.replace(",", "").replace(".", ""))
-                except (ValueError, TypeError):
-                    seguidores = None
-                try:
-                    seguidos = int(seguidos_text.replace(",", "").replace(".", ""))
-                except (ValueError, TypeError):
-                    seguidos = None
-
-                hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
-                emails = extraer_emails(bio)
-                email = emails[0] if emails else None
-                email_fuente = "bio" if email else None
-
-                telefonos = extraer_telefonos(bio)
-                telefono = telefonos[0] if telefonos else None
-                origen = "bio" if email else "no_email"
-
-                browser.close()
-                playwright.stop()
+                print("🧹 Cerrando navegador (automáticamente con 'with')", flush=True)
 
                 return {
                     "nombre": nombre,
                     "usuario": username,
-                    "email": email,
-                    "fuente_email": email_fuente,
-                    "telefono": telefono,
-                    "seguidores": seguidores,
-                    "seguidos": seguidos,
-                    "hashtags": hashtags,
-                    "origen": origen
+                    "email": None,
+                    "fuente_email": None,
+                    "telefono": None,
+                    "seguidores": None,
+                    "seguidos": None,
+                    "hashtags": [],
+                    "origen": "playwright"
                 }
 
-            except Exception as e:
-                print(f"❌ Fallo en navegación o extracción: {e}")
-                browser.close()
-                playwright.stop()
-                continue  # Probar con otro proxy
-
         except Exception as e:
-            print(f"❌ Error general al lanzar Playwright: {e}")
-            continue  # Probar con otro proxy
+            print(f"❌ Excepción en intento {intento+1}: {e}", flush=True)
 
-    print("❌ Todos los intentos de acceso fallaron con los proxies disponibles.")
+    print("❌ Todos los intentos fallaron", flush=True)
     return None
 
 
