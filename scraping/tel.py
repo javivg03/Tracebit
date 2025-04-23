@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 
-from services.validator import extraer_emails, extraer_telefonos
+from utils.validator import extraer_emails, extraer_telefonos
 
 def scrape_telegram(channel_username):
     url = f"https://t.me/s/{channel_username}"

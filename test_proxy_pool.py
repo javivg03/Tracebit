@@ -1,4 +1,4 @@
-from utils.proxy_pool import ProxyPool
+from services.proxy_pool import ProxyPool
 
 pool = ProxyPool()
 pool.validate_all()

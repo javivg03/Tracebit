@@ -1,15 +1,18 @@
 from celery_app import celery_app
 from scraping.instagram.seguidores import scrape_followers_info as run_scrape_followers_info
 from scraping.instagram.seguidos import scrape_followees_info as run_scrape_followees_info
+from services.logging_config import logger
 
 @celery_app.task(queue="scraping")
 def scrape_followers_info_task(username: str, max_seguidores: int = 3):
-    print(f"🚀 Tarea Celery: scrape_followers_info para {username} recibida")
+    logger.info(f"🚀 Tarea Celery: scrape_followers_info para {username} recibida")
     datos = run_scrape_followers_info(username, max_seguidores)
 
     if not datos:
+        logger.warning("⚠️ No se extrajo ningún seguidor")
         return {"estado": "fallo", "mensaje": "No se extrajo ningún seguidor"}
 
+    logger.info(f"✅ Seguidores extraídos correctamente para {username}")
     return {
         "estado": "ok",
         "data": datos,
@@ -19,12 +22,14 @@ def scrape_followers_info_task(username: str, max_seguidores: int = 3):
 
 @celery_app.task(queue="scraping")
 def scrape_followees_info_task(username: str, max_seguidos: int = 3):
-    print(f"🚀 Tarea Celery: scrape_followees_info para {username} recibida")
+    logger.info(f"🚀 Tarea Celery: scrape_followees_info para {username} recibida")
     datos = run_scrape_followees_info(username, max_seguidos)
 
     if not datos:
+        logger.warning("⚠️ No se extrajo ningún seguido")
         return {"estado": "fallo", "mensaje": "No se extrajo ningún seguido"}
 
+    logger.info(f"✅ Seguidos extraídos correctamente para {username}")
     return {
         "estado": "ok",
         "data": datos,

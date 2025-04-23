@@ -3,7 +3,7 @@ import requests
 import time
 from duckduckgo_search import DDGS
 from googlesearch import search as google_search
-from services.validator import extraer_emails, extraer_telefonos
+from utils.validator import extraer_emails, extraer_telefonos
 
 
 def buscar_por_keyword(keyword: str, max_results=10):

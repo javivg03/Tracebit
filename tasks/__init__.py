@@ -1,1 +1,1 @@
-from tasks import instagram
+from tasks import instagram, tiktok

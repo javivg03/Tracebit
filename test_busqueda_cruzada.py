@@ -1,4 +1,4 @@
-from services.busqueda_cruzada import buscar_email
+from utils.busqueda_cruzada import buscar_email
 
 # 🔁 Puedes cambiar el username y el nombre real para probar distintos perfiles
 username = ""

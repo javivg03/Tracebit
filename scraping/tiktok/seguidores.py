@@ -1,34 +1,24 @@
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 from scraping.tiktok.perfil import obtener_datos_perfil_tiktok
-# from utils.proxy_pool import ProxyPool  # ⛔ Desactivado temporalmente
+from services.logging_config import logger
 
-
+# Función que extrae los usernames de los seguidores desde la interfaz de TikTok
 async def obtener_seguidores_tiktok(username: str, max_seguidores: int = 3):
     seguidores = []
-    print(f"🚀 Iniciando extracción de seguidores TikTok para: {username}")
-
-    # pool = ProxyPool()
-    # proxy = pool.get_random_proxy()
-
-    # if not proxy:
-    #     print("❌ No hay proxies disponibles.")
-    #     return []
-
-    # print(f"🧩 Proxy elegido: {proxy}")
+    logger.info(f"🚀 Iniciando extracción de seguidores TikTok para: {username}")
 
     try:
         async with async_playwright() as p:
-            # ✅ Sin proxy
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context()
             page = await context.new_page()
 
             try:
-                print("🌐 Abriendo perfil del usuario...")
+                logger.info("🌐 Abriendo sección de seguidores...")
                 await page.goto(f"https://www.tiktok.com/@{username}/followers", timeout=20000)
                 await page.wait_for_timeout(3000)
 
-                print("🔄 Scroll y recolección de seguidores...")
+                logger.info("🔄 Iniciando scroll para extraer seguidores...")
                 for _ in range(10):
                     await page.mouse.wheel(0, 5000)
                     await page.wait_for_timeout(1000)
@@ -41,45 +31,43 @@ async def obtener_seguidores_tiktok(username: str, max_seguidores: int = 3):
                     for user in items:
                         if user not in seguidores and len(seguidores) < max_seguidores:
                             seguidores.append(user)
-                            print(f"👤 Seguidor #{len(seguidores)}: {user}")
+                            logger.info(f"👤 Seguidor #{len(seguidores)}: {user}")
 
                     if len(seguidores) >= max_seguidores:
                         break
 
             except Exception as e:
-                print(f"❌ Error al navegar o extraer seguidores: {e}")
-                # pool.remove_proxy(proxy)
+                logger.error(f"❌ Error durante navegación o extracción de seguidores: {e}")
 
             finally:
-                print("🧹 Cerrando navegador...")
+                logger.info("🧹 Cerrando navegador de TikTok...")
                 try:
                     await context.close()
                     await browser.close()
                 except Exception as e:
-                    print(f"⚠️ Error al cerrar navegador: {e}")
+                    logger.warning(f"⚠️ Error al cerrar navegador: {e}")
 
     except Exception as e:
-        print(f"❌ Error general durante Playwright: {e}")
-        # pool.remove_proxy(proxy)
+        logger.error(f"❌ Error general durante Playwright: {e}")
 
     return seguidores
 
-
+# Función que llama al scraper de perfil para cada seguidor y acumula los datos
 async def scrape_followers_info_tiktok(username: str, max_seguidores: int = 3):
-    print(f"🔍 Scrapeando seguidores de TikTok para: {username}")
+    logger.info(f"🔍 Scrapeando seguidores de TikTok para: {username}")
     todos_los_datos = []
 
     seguidores = await obtener_seguidores_tiktok(username, max_seguidores=max_seguidores)
     if not seguidores:
-        print("⚠️ No se encontraron seguidores.")
+        logger.warning("⚠️ No se encontraron seguidores.")
         return []
 
     for i, usuario in enumerate(seguidores):
-        print(f"🔍 ({i+1}/{len(seguidores)}) Scrapeando seguidor: {usuario}")
+        logger.info(f"🔍 ({i+1}/{len(seguidores)}) Scrapeando perfil del seguidor: {usuario}")
         try:
             datos = await obtener_datos_perfil_tiktok(usuario)
             todos_los_datos.append(datos)
         except Exception as e:
-            print(f"❌ Error al scrapear seguidor {usuario}: {e}")
+            logger.error(f"❌ Error al scrapear perfil del seguidor {usuario}: {e}")
 
     return todos_los_datos

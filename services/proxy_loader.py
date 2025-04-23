@@ -1,7 +1,7 @@
 import json
-from utils.proxy_checker import check_proxy
+from services.proxy_checker import check_proxy
 
-def convert_txt_to_json(txt_path="utils/raw_proxies.txt", json_path="utils/proxies.json"):
+def convert_txt_to_json(txt_path="services/raw_proxies.txt", json_path="services/proxies.json"):
     with open(txt_path, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
 

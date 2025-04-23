@@ -1,13 +1,15 @@
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
-# from utils.playwright_tools import iniciar_browser_con_proxy
-from services.validator import extraer_emails, extraer_telefonos
-from services.busqueda_cruzada import buscar_contacto
+
+from utils.busqueda_cruzada import buscar_contacto
+from utils.validator import extraer_emails, extraer_telefonos
+from services.logging_config import logger
+from utils.normalizador import normalizar_datos_scraper
 
 
 def obtener_datos_perfil_tiktok(username: str) -> dict:
-    print(f"🚀 Iniciando scraping de perfil TikTok para: {username}")
+    logger.info(f"🚀 Iniciando scraping de perfil TikTok para: {username}")
 
     urls = [
         f"https://www.tiktok.com/@{username}",
@@ -17,11 +19,6 @@ def obtener_datos_perfil_tiktok(username: str) -> dict:
     resultado = None
 
     try:
-        # ⛔ Desactivado proxy temporalmente
-        # playwright, browser, context, proxy = iniciar_browser_con_proxy()
-        # print(f"🧩 Proxy elegido: {proxy}")
-
-        # ✅ Modo sin proxy
         playwright = sync_playwright().start()
         browser = playwright.chromium.launch(headless=True)
         context = browser.new_context()
@@ -29,7 +26,7 @@ def obtener_datos_perfil_tiktok(username: str) -> dict:
 
         for url in urls:
             try:
-                print(f"🌐 Visitando: {url}")
+                logger.info(f"🌐 Visitando: {url}")
                 page.goto(url, timeout=20000)
                 page.wait_for_timeout(3000)
 
@@ -53,31 +50,24 @@ def obtener_datos_perfil_tiktok(username: str) -> dict:
                 hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
                 origen = "bio" if email else "no_email"
 
-                resultado = {
-                    "nombre": nombre,
-                    "usuario": username,
-                    "email": email,
-                    "fuente_email": fuente_email,
-                    "telefono": telefono,
-                    "seguidores": None,
-                    "seguidos": None,
-                    "hashtags": hashtags,
-                    "origen": origen
-                }
+                resultado = normalizar_datos_scraper(
+                    nombre, username, email, fuente_email,
+                    telefono, None, None, hashtags, origen
+                )
 
                 if email:
-                    print("✅ Email encontrado, saliendo del bucle de URLs.")
+                    logger.info("✅ Email encontrado, saliendo del bucle de URLs.")
                     break
 
             except Exception as e:
-                print(f"⚠️ Error al procesar {url}: {e}")
+                logger.warning(f"⚠️ Error al procesar {url}: {e}")
                 continue
 
         browser.close()
         playwright.stop()
 
     except Exception as e:
-        print(f"❌ Error general durante scraping de TikTok: {e}")
+        logger.error(f"❌ Error general durante scraping de TikTok: {e}")
         resultado = None
 
     if resultado and resultado.get("email"):
@@ -87,30 +77,21 @@ def obtener_datos_perfil_tiktok(username: str) -> dict:
 
 
 def fallback_tiktok(username: str, nombre: str = None) -> dict:
-    print("🔍 Lanzando búsqueda cruzada...")
+    logger.info("🔍 Lanzando búsqueda cruzada...")
     resultado = buscar_contacto(username, nombre or username)
 
     if resultado:
-        return {
-            "nombre": resultado.get("nombre") or username,
-            "usuario": username,
-            "email": resultado.get("email"),
-            "telefono": resultado.get("telefono"),
-            "fuente_email": resultado.get("url_fuente"),
-            "seguidores": None,
-            "seguidos": None,
-            "hashtags": [],
-            "origen": f"búsqueda cruzada ({resultado.get('origen')})"
-        }
+        return normalizar_datos_scraper(
+            resultado.get("nombre") or username,
+            username,
+            resultado.get("email"),
+            resultado.get("url_fuente"),
+            resultado.get("telefono"),
+            None, None, [],
+            f"búsqueda cruzada ({resultado.get('origen')})"
+        )
 
-    return {
-        "nombre": None,
-        "usuario": username,
-        "email": None,
-        "fuente_email": None,
-        "telefono": None,
-        "seguidores": None,
-        "seguidos": None,
-        "hashtags": [],
-        "origen": "error"
-    }
+    logger.warning("⚠️ No se encontró ningún dato en búsqueda cruzada.")
+    return normalizar_datos_scraper(
+        None, username, None, None, None, None, None, [], "error"
+    )

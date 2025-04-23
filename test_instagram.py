@@ -1,15 +1,6 @@
-from scraping.instagram.seguidores import scrape_followers_info
+from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback
 
-# 🧪 Configuración
-perfil_objetivo = "sofig.oficial"
-max_seguidores = 5
-
-print(f"🔍 Iniciando test de extracción completa de seguidores para: {perfil_objetivo}\n")
-
-# Llamamos a la nueva función completa
-datos = scrape_followers_info(perfil_objetivo, max_seguidores=max_seguidores)
-
-if datos:
-    print(f"\n✅ Se han scrapeado {len(datos)} perfiles de seguidores correctamente.")
-else:
-    print("⚠️ No se pudo completar la extracción de seguidores.")
+if __name__ == "__main__":
+    username = "jordiwild8"  # Cambia esto por el perfil que quieras probar
+    resultado = obtener_datos_perfil_instagram_con_fallback(username)
+    print("🔎 Resultado:", resultado)

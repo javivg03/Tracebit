@@ -1,5 +1,5 @@
 from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback
-# from utils.playwright_tools import iniciar_browser_con_proxy
+# from services.playwright_tools import iniciar_browser_con_proxy
 from playwright.sync_api import sync_playwright, TimeoutError
 
 

@@ -1,9 +1,9 @@
 import json
 import random
 from typing import List, Optional
-from utils.proxy_checker import check_proxy
+from services.proxy_checker import check_proxy
 
-PROXY_FILE = "utils/proxies.json"
+PROXY_FILE = "services/proxies.json"
 
 
 class ProxyPool:

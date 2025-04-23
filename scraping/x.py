@@ -1,5 +1,5 @@
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
-from services.validator import extraer_emails, extraer_telefonos
+from utils.validator import extraer_emails, extraer_telefonos
 
 async def scrape_x(username):
     print(f"🚀 Iniciando scraping de X para: {username}")

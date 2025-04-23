@@ -2,7 +2,7 @@ from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
-from services.validator import extraer_emails, extraer_telefonos
+from utils.validator import extraer_emails, extraer_telefonos
 
 async def scrape_facebook(username_o_nombre):
     print(f"🚀 Iniciando scraping de Facebook con Playwright para: {username_o_nombre}")

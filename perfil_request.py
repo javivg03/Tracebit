@@ -1,5 +1,5 @@
 import requests
-from utils.user_agents import random_user_agent
+from services.user_agents import random_user_agent
 
 def probar_user_agent(username):
     url = f"https://www.instagram.com/{username}/"

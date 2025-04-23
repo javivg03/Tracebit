@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright, TimeoutError
 from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback
-# from utils.proxy_pool import ProxyPool
-# from utils.playwright_tools import iniciar_browser_con_proxy
+# from services.proxy_pool import ProxyPool
+# from services.playwright_tools import iniciar_browser_con_proxy
 
 def obtener_seguidores(username: str, max_seguidores: int = 3):
     seguidores = []

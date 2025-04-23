@@ -31,10 +31,11 @@ fct_scraper_backend/
 │       ├── seguidores.py
 │       └── seguidos.py
 
-├── services/
+├── utils/
 │   ├── __init__.py
 │   ├── busqueda_cruzada.py
 │   ├── history.py
+│   ├── normalizador.py
 │   └── validator.py
 
 ├── static/
@@ -50,8 +51,9 @@ fct_scraper_backend/
 │   ├── instagram.py
 │   └── tiktok.py
 
-├── utils/
+├── services/
 │   ├── __init__.py
+│   ├── logging_config.py
 │   ├── playwright_tools.py
 │   ├── proxy_checker.py
 │   ├── proxy_loader.py

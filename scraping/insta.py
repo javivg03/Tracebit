@@ -1,5 +1,5 @@
 import instaloader
-from services.validator import extraer_emails, extraer_telefonos
+from utils.validator import extraer_emails, extraer_telefonos
 
 def extraer_datos_relevantes(username):
     insta_loader = instaloader.Instaloader()

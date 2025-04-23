@@ -24,7 +24,7 @@ def fetch_all_proxies() -> list:
     return sorted(list(proxies))
 
 
-def save_to_txt(proxies: list, output_file="utils/raw_proxies.txt"):
+def save_to_txt(proxies: list, output_file="services/raw_proxies.txt"):
     with open(output_file, "w", encoding="utf-8") as f:
         for proxy in proxies:
             f.write(proxy + "\n")

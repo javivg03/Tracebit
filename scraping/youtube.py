@@ -1,5 +1,5 @@
 from playwright.async_api import async_playwright
-from services.validator import extraer_emails, extraer_telefonos
+from utils.validator import extraer_emails, extraer_telefonos
 
 async def scrape_youtube(username):
     async with async_playwright() as p:
