@@ -1,5 +1,6 @@
 import json
 from services.proxy_checker import check_proxy
+from services.logging_config import logger
 
 def convert_txt_to_json(txt_path="services/raw_proxies.txt", json_path="services/proxies.json"):
     with open(txt_path, "r", encoding="utf-8") as f:
@@ -8,7 +9,7 @@ def convert_txt_to_json(txt_path="services/raw_proxies.txt", json_path="services
     proxies = ["http://" + line if not line.startswith("http") else line for line in lines]
     proxies_validos = []
 
-    print(f"[Loader] Validando {len(proxies)} proxies...")
+    logger.info(f"[Loader] Validando {len(proxies)} proxies...")
 
     for proxy in proxies:
         if check_proxy(proxy):
@@ -17,8 +18,8 @@ def convert_txt_to_json(txt_path="services/raw_proxies.txt", json_path="services
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"proxies": proxies_validos}, f, indent=4)
 
-    print(f"[Loader] ✅ {len(proxies_validos)} proxies válidos guardados en '{json_path}'")
-    print(f"[Loader] ❌ {len(proxies) - len(proxies_validos)} proxies descartados")
+    logger.info(f"[Loader] ✅ {len(proxies_validos)} proxies válidos guardados en '{json_path}'")
+    logger.info(f"[Loader] ❌ {len(proxies) - len(proxies_validos)} proxies descartados")
 
 if __name__ == "__main__":
     convert_txt_to_json()

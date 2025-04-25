@@ -2,12 +2,13 @@ import json
 import random
 from typing import List, Optional
 from services.proxy_checker import check_proxy
+from services.logging_config import logger
 
 PROXY_FILE = "services/proxies.json"
 
 
 class ProxyPool:
-    def __init__(self, proxy_file: str = PROXY_FILE, validar_al_cargar: bool = False): #Activamos si queremos verificar automaticamente
+    def __init__(self, proxy_file: str = PROXY_FILE, validar_al_cargar: bool = False):
         self.proxy_file = proxy_file
         self.proxies: List[str] = []
         self.load_proxies()
@@ -29,11 +30,11 @@ class ProxyPool:
 
     def validate_all(self):
         """Valida todos los proxies usando proxy_checker y guarda solo los válidos."""
-        print("[ProxyPool] Validando proxies...")
+        logger.info("[ProxyPool] Validando proxies...")
         valid_proxies = [p for p in self.proxies if check_proxy(p)]
         self.proxies = valid_proxies
         self.save_proxies()
-        print(f"[ProxyPool] Proxies válidos: {len(valid_proxies)}")
+        logger.info(f"[ProxyPool] Proxies válidos: {len(valid_proxies)}")
 
     def get_random_proxy(self) -> Optional[str]:
         if not self.proxies:
@@ -44,7 +45,7 @@ class ProxyPool:
         if proxy in self.proxies:
             self.proxies.remove(proxy)
             self.save_proxies()
-            print(f"[ProxyPool] Proxy eliminado: {proxy}")
+            logger.info(f"[ProxyPool] Proxy eliminado: {proxy}")
 
     def add_proxies(self, new_proxies: List[str]):
         """Agrega nuevos proxies, evitando duplicados, y los guarda."""

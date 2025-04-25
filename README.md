@@ -60,7 +60,7 @@ instaloader --login=tu_usuario_instagram
 - **Windows:** `C:\Users\TU_USUARIO\AppData\Local\Instaloader\`  
 - **Linux/macOS:** `~/.config/instaloader/`  
 
-🔁 Si quieres reutilizarla dentro de Docker, copia el archivo `session-tu_usuario_instagram` a la carpeta del proyecto.
+🔁 Si quieres reutilizarla dentro de Docker, monta el volumen al contenedor.
 
 ---
 

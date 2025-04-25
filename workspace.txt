@@ -20,9 +20,11 @@ fct_scraper_backend/
 │   ├── tiktok/
 │   │   ├── __init__.py
 │   │   ├── perfil.py
+│   │   ├── seguidos.py
 │   │   └── seguidores.py
 │   ├── web.py
-│   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   └── web_scraper.py
 │   ├── x.py
 │   │   └── __init__.py
 │   └── instagram/
@@ -37,6 +39,13 @@ fct_scraper_backend/
 │   ├── history.py
 │   ├── normalizador.py
 │   └── validator.py
+
+├── routes/
+│   ├── __init__.py
+│   ├── web.py
+│   ├── instagram.py
+│   ├── tiktok.py
+│   └── telegram.py
 
 ├── static/
 │   ├── css/

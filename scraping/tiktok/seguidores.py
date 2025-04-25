@@ -10,7 +10,7 @@ async def obtener_seguidores_tiktok(username: str, max_seguidores: int = 3):
     try:
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context()
+            context = await browser.new_context(storage_state="state_tiktok.json")  # <-- aquí
             page = await context.new_page()
 
             try:
@@ -25,7 +25,21 @@ async def obtener_seguidores_tiktok(username: str, max_seguidores: int = 3):
 
                     items = await page.eval_on_selector_all(
                         'a[href^="/@"]',
-                        "elements => [...new Set(elements.map(e => e.href.split('/@')[1]))]"
+                        '''
+                        elements => {
+                            const usernames = new Set();
+                            elements.forEach(e => {
+                                const href = e.getAttribute("href");
+                                if (href && href.startsWith("/@")) {
+                                    let username = href.split("/@")[1].split("?")[0];  // limpia ?lang=en u otros params
+                                    if (username && !username.includes("/")) {
+                                        usernames.add(username);
+                                    }
+                                }
+                            });
+                            return [...usernames];
+                        }
+                        '''
                     )
 
                     for user in items:
@@ -51,6 +65,7 @@ async def obtener_seguidores_tiktok(username: str, max_seguidores: int = 3):
         logger.error(f"❌ Error general durante Playwright: {e}")
 
     return seguidores
+
 
 # Función que llama al scraper de perfil para cada seguidor y acumula los datos
 async def scrape_followers_info_tiktok(username: str, max_seguidores: int = 3):

@@ -1,10 +1,7 @@
-FROM ubuntu:20.04
+FROM python:3.11-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
-
+# Instala dependencias del sistema necesarias para Playwright
 RUN apt-get update && apt-get install -y \
-    python3-pip \
-    python3-dev \
     wget \
     libglib2.0-0 \
     libnss3 \
@@ -25,18 +22,18 @@ RUN apt-get update && apt-get install -y \
     libxkbcommon0 \
     ca-certificates \
     tzdata \
-    && pip3 install --no-cache-dir playwright \
-    && playwright install-deps \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN playwright install
+# Instala Playwright
+RUN pip install --no-cache-dir playwright && playwright install-deps && playwright install
 
+# Establece directorio de trabajo
 WORKDIR /app
 
+# Copia e instala dependencias Python
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip3 install --no-cache-dir -r requirements.txt
-
+# Expone el puerto de FastAPI
 EXPOSE 8000
-

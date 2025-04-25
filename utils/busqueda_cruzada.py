@@ -4,9 +4,8 @@ from bs4 import BeautifulSoup
 from googlesearch import search as google_search
 from duckduckgo_search import DDGS
 from utils.validator import extraer_emails, extraer_telefonos
-import logging
-
-logger = logging.getLogger("fct_scraper")
+from services.proxy_pool import ProxyPool
+from services.logging_config import logger
 
 # =========================
 # FUNCIONES DE EXTRACCIÓN
@@ -14,8 +13,18 @@ logger = logging.getLogger("fct_scraper")
 
 def analizar_url_contacto(url, origen="externo", timeout=5):
     try:
+        if not url or not url.startswith("http"):
+            logger.warning("⚠️ URL vacía o inválida. Saltando...")
+            return None
+
         logger.info(f"🔗 Analizando URL: {url} (origen: {origen})")
-        res = requests.get(url, timeout=timeout)
+
+        pool = ProxyPool()
+        proxy = pool.get_random_proxy()
+
+        proxies = {"http": proxy, "https": proxy} if proxy else None
+
+        res = requests.get(url, timeout=timeout, proxies=proxies)
         if res.status_code == 200:
             text = BeautifulSoup(res.text, "html.parser").get_text(separator=" ", strip=True)
             emails = extraer_emails(text)
@@ -25,7 +34,8 @@ def analizar_url_contacto(url, origen="externo", timeout=5):
                     "email": emails[0] if emails else None,
                     "telefono": telefonos[0] if telefonos else None,
                     "url_fuente": url,
-                    "origen": origen
+                    "origen": origen,
+                    "nombre": None
                 }
     except Exception as e:
         logger.warning(f"❌ Error accediendo a {url}: {e}")
@@ -54,10 +64,12 @@ def buscar_contacto_en_duckduckgo(query, max_urls=5):
         with DDGS() as ddgs:
             for resultado in ddgs.text(query, max_results=max_urls):
                 url = resultado.get("href") or resultado.get("url")
-                if url:
-                    datos = analizar_url_contacto(url, "duckduckgo")
-                    if datos:
-                        return datos
+                if not url or not url.startswith("http"):
+                    logger.warning("⚠️ URL vacía o inválida en DuckDuckGo. Saltando...")
+                    continue
+                datos = analizar_url_contacto(url, "duckduckgo")
+                if datos:
+                    return datos
     except Exception as e:
         logger.warning(f"❌ DuckDuckGo error: {e}")
     return None
@@ -67,6 +79,9 @@ def buscar_contacto_en_google(query, max_urls=5):
     try:
         resultados = google_search(query, num_results=max_urls, lang="es")
         for url in resultados:
+            if not url or not url.startswith("http"):
+                logger.warning("⚠️ URL vacía o inválida en Google. Saltando...")
+                continue
             datos = analizar_url_contacto(url, "google")
             if datos:
                 return datos
@@ -74,40 +89,65 @@ def buscar_contacto_en_google(query, max_urls=5):
         logger.warning(f"❌ Google error: {e}")
     return None
 
-def buscar_contacto_en_yahoo(query):
-    logger.info(f"🔸 Yahoo → {query}")
-    url_search = f"https://es.search.yahoo.com/search?p={quote_plus(query)}"
-    return analizar_url_contacto(url_search, "yahoo")
+# =========================
+# REDES SOCIALES (sin circular import)
+# =========================
+
+def buscar_contacto_en_red_social(username, nombre, red):
+    try:
+        if red == "instagram":
+            from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback as insta
+            datos = insta(username, forzar_solo_bio=True)
+        elif red == "tiktok":
+            from scraping.tiktok.perfil import obtener_datos_perfil_tiktok as tiktok
+            datos = tiktok(username, forzar_solo_bio=True)
+        elif red == "telegram":
+            from scraping.telegram.canal import obtener_datos_canal_telegram as telegram
+            datos = telegram(username)
+        else:
+            return None
+
+        if datos and (datos.get("email") or datos.get("telefono")):
+            return {
+                "email": datos.get("email"),
+                "telefono": datos.get("telefono"),
+                "url_fuente": datos.get("fuente_email"),
+                "origen": red,
+                "nombre": datos.get("nombre")
+            }
+
+    except Exception as e:
+        logger.warning(f"⚠️ Error buscando en {red}: {e}")
+
+    return None
 
 # =========================
-# BÚSQUEDA CRUZADA
+# FLUJO ESCALONADO PRINCIPAL
 # =========================
 
 def buscar_contacto(username, nombre_completo=None, origen_actual=None):
     logger.info(f"🔎 Iniciando búsqueda cruzada para: {username} (origen actual: {origen_actual})")
 
-    plataformas_personales = [
-        buscar_contacto_en_github,
-        buscar_contacto_en_aboutme,
-        buscar_contacto_en_medium
-    ]
+    # 1️⃣ Redes sociales
+    for red in ["instagram", "tiktok", "telegram"]:
+        if red == origen_actual:
+            continue
+        datos = buscar_contacto_en_red_social(username, nombre_completo or username, red)
+        if datos:
+            return datos
 
-    for funcion in plataformas_personales:
+    # 2️⃣ Plataformas personales
+    for buscador in [buscar_contacto_en_github, buscar_contacto_en_aboutme, buscar_contacto_en_medium]:
         try:
-            datos = funcion(username)
+            datos = buscador(username)
             if datos:
                 return datos
         except Exception as e:
-            logger.warning(f"⚠️ Error en {funcion.__name__}: {e}")
+            logger.warning(f"⚠️ Error en {buscador.__name__}: {e}")
 
+    # 3️⃣ Buscadores generales
     query = f'"{nombre_completo or username}" contacto OR email OR teléfono OR "sitio web"'
-    motores = [
-        buscar_contacto_en_duckduckgo,
-        buscar_contacto_en_google,
-        buscar_contacto_en_yahoo
-    ]
-
-    for buscador in motores:
+    for buscador in [buscar_contacto_en_duckduckgo, buscar_contacto_en_google]:
         try:
             datos = buscador(query)
             if datos:

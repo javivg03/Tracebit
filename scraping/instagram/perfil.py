@@ -7,7 +7,7 @@ from services.logging_config import logger
 from utils.normalizador import normalizar_datos_scraper
 import instaloader
 
-def scrapear_perfil_instagram_instaloader(username: str):
+def scrapear_perfil_instagram_instaloader(username: str, forzar_solo_bio: bool = False):
     logger.info(f"📅 Intentando scrapear perfil con Instaloader: {username}")
 
     user_agent = random_user_agent()
@@ -40,8 +40,6 @@ def scrapear_perfil_instagram_instaloader(username: str):
 
         nombre = profile.full_name
         bio = profile.biography or ""
-        seguidores = profile.followers
-        seguidos = profile.followees
         hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
 
         emails = extraer_emails(bio)
@@ -53,6 +51,13 @@ def scrapear_perfil_instagram_instaloader(username: str):
 
         origen = "bio" if email else "no_email"
 
+        seguidores = None
+        seguidos = None
+
+        if not forzar_solo_bio:
+            seguidores = profile.followers
+            seguidos = profile.followees
+
         return normalizar_datos_scraper(
             nombre, username, email, email_fuente,
             telefono, seguidores, seguidos, hashtags, origen
@@ -62,7 +67,7 @@ def scrapear_perfil_instagram_instaloader(username: str):
         logger.error(f"❌ Error al obtener el perfil con Instaloader: {e}")
         return None
 
-def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 1):
+def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 1, forzar_solo_bio: bool = False):
     logger.info(f"🔍 Intentando scraping de perfil con Playwright: {username}")
 
     for intento in range(max_intentos):
@@ -85,19 +90,6 @@ def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 1):
                 logger.info("📜 Extrayendo descripción de perfil (bio)...")
                 bio = page.locator('meta[name="description"]').get_attribute("content") or ""
 
-                logger.info("👥 Extrayendo número de seguidores y seguidos...")
-                seguidores_text = page.locator("ul li:nth-child(2) span").first.get_attribute("title") or ""
-                seguidos_text = page.locator("ul li:nth-child(3) span").first.inner_text() or ""
-
-                try:
-                    seguidores = int(seguidores_text.replace(",", "").replace(".", ""))
-                except (ValueError, TypeError, AttributeError):
-                    seguidores = None
-                try:
-                    seguidos = int(seguidos_text.replace(",", "").replace(".", ""))
-                except (ValueError, TypeError, AttributeError):
-                    seguidos = None
-
                 hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
                 emails = extraer_emails(bio)
                 email = emails[0] if emails else None
@@ -106,6 +98,23 @@ def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 1):
                 telefonos = extraer_telefonos(bio)
                 telefono = telefonos[0] if telefonos else None
                 origen = "bio" if email else "no_email"
+
+                seguidores = None
+                seguidos = None
+
+                if not forzar_solo_bio:
+                    logger.info("👥 Extrayendo número de seguidores y seguidos...")
+                    seguidores_text = page.locator("ul li:nth-child(2) span").first.get_attribute("title") or ""
+                    seguidos_text = page.locator("ul li:nth-child(3) span").first.inner_text() or ""
+
+                    try:
+                        seguidores = int(seguidores_text.replace(",", "").replace(".", ""))
+                    except (ValueError, TypeError, AttributeError):
+                        seguidores = None
+                    try:
+                        seguidos = int(seguidos_text.replace(",", "").replace(".", ""))
+                    except (ValueError, TypeError, AttributeError):
+                        seguidos = None
 
                 logger.info("🪩 Cerrando navegador y devolviendo datos extraídos...")
                 browser.close()
@@ -129,25 +138,30 @@ def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 1):
     logger.error("❌ Todos los intentos de acceso fallaron. No se pudo acceder al perfil.")
     return None
 
-def obtener_datos_perfil_instagram_con_fallback(username: str) -> dict:
-    logger.info(f"📅 Intentando scrapear perfil con Instaloader: {username}")
-    datos = scrapear_perfil_instagram_instaloader(username)
+def obtener_datos_perfil_instagram_con_fallback(username: str, forzar_solo_bio: bool = False) -> dict:
+    datos = scrapear_perfil_instagram_instaloader(username, forzar_solo_bio=forzar_solo_bio)
 
     if datos and datos.get("email"):
         return datos
 
     logger.warning("⚠️ Instaloader falló o sin email. Probando con Playwright...")
-    datos = scrapear_perfil_instagram_playwright(username)
+    datos = scrapear_perfil_instagram_playwright(username, forzar_solo_bio=forzar_solo_bio)
 
     if datos and datos.get("email"):
         return datos
 
-    logger.info("🔍 Lanzando búsqueda cruzada...")
-    resultado_cruzado = buscar_contacto(username, datos.get("nombre") if datos else username)
+    nombre_extraido = datos.get("nombre") if datos else username
 
-    if resultado_cruzado:
+    logger.info("🔍 Lanzando búsqueda cruzada...")
+    resultado_cruzado = buscar_contacto(
+        username=username,
+        nombre_completo=nombre_extraido,
+        origen_actual="instagram"
+    )
+
+    if resultado_cruzado and (resultado_cruzado.get("email") or resultado_cruzado.get("telefono")):
         return normalizar_datos_scraper(
-            resultado_cruzado.get("nombre") or username,
+            resultado_cruzado.get("nombre") or nombre_extraido,
             username,
             resultado_cruzado.get("email"),
             resultado_cruzado.get("url_fuente"),
@@ -156,7 +170,7 @@ def obtener_datos_perfil_instagram_con_fallback(username: str) -> dict:
             f"búsqueda cruzada ({resultado_cruzado.get('origen')})"
         )
 
-    logger.warning("⚠️ No se encontró ningún dato en búsqueda cruzada.")
+    logger.warning(f"⚠️ No se encontró ningún dato útil para {username} tras scraping + búsqueda cruzada.")
     return normalizar_datos_scraper(
         None, username, None, None, None, None, None, [], "error"
     )

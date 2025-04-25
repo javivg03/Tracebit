@@ -1,5 +1,6 @@
 import requests
 from playwright.sync_api import sync_playwright
+from services.logging_config import logger
 
 def check_proxy_requests(proxy: str, timeout: int = 5) -> bool:
     """Valida un proxy haciendo una petición HTTP simple con requests."""
@@ -10,10 +11,10 @@ def check_proxy_requests(proxy: str, timeout: int = 5) -> bool:
             timeout=timeout
         )
         if response.status_code == 200:
-            print(f"[✅ Requests] Proxy válido: {proxy}")
+            logger.info(f"[✅ Requests] Proxy válido: {proxy}")
             return True
     except requests.RequestException as e:
-        print(f"[⚠️ Requests] Fallo con proxy {proxy}: {e}")
+        logger.warning(f"[⚠️ Requests] Fallo con proxy {proxy}: {e}")
     return False
 
 
@@ -25,11 +26,11 @@ def check_proxy_playwright(proxy: str, timeout: int = 8000) -> bool:
             context = browser.new_context()
             page = context.new_page()
             page.goto("http://httpbin.org/ip", timeout=timeout)
-            print(f"[✅ Playwright] Proxy válido: {proxy}")
+            logger.info(f"[✅ Playwright] Proxy válido: {proxy}")
             browser.close()
             return True
     except Exception as e:
-        print(f"[❌ Playwright] Fallo con proxy {proxy}: {e}")
+        logger.error(f"[❌ Playwright] Fallo con proxy {proxy}: {e}")
         return False
 
 
@@ -40,5 +41,5 @@ def check_proxy(proxy: str) -> bool:
     elif check_proxy_playwright(proxy):
         return True
     else:
-        print(f"[⛔ Checker] Proxy inválido: {proxy}")
+        logger.error(f"[⛔ Checker] Proxy inválido: {proxy}")
         return False
