@@ -32,5 +32,5 @@ def lanzar_scraping_info_seguidores(data: UserInput = Body(...), req: Seguidores
 @router_instagram.post("/seguidos")
 def lanzar_scraping_info_seguidos(data: UserInput = Body(...), req: SeguidosRequest = Body(...)):
     tarea = scrape_followees_info_task.delay(data.username, req.max_seguidos)
-    logger.info(f"📥 Tarea Celery lanzada: scrape_followees_info para {data.username} (máx {req.max_seguidores})")
+    logger.info(f"📥 Tarea Celery lanzada: scrape_followees_info para {data.username} (máx {req.max_seguidos})")
     return {"mensaje": "Scraping completo de seguidos en curso", "tarea_id": tarea.id}

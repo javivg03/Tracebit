@@ -1,5 +1,6 @@
 from celery_app import celery_app
 from scraping.tiktok.seguidores import scrape_followers_info_tiktok
+from scraping.tiktok.seguidos import scrape_followees_info_tiktok
 from services.logging_config import logger
 import asyncio
 
@@ -22,4 +23,25 @@ def scrape_followers_info_tiktok_task(username: str, max_seguidores: int = 10):
         "estado": "ok",
         "data": datos,
         "excel_path": f"/download/seguidores_tiktok_{username}.xlsx"
+    }
+
+@celery_app.task(name="scrape_followees_info_tiktok_task", queue="scraping")
+def scrape_followees_info_tiktok_task(username: str, max_seguidos: int = 10):
+    logger.info(f"🚀 Tarea Celery: scrape_followees_info_tiktok para {username} recibida")
+
+    try:
+        datos = asyncio.run(scrape_followees_info_tiktok(username, max_seguidos))
+    except Exception as e:
+        logger.error(f"❌ Error al ejecutar el scraping de seguidos TikTok: {e}")
+        return {"estado": "fallo", "mensaje": f"Error en ejecución: {e}"}
+
+    if not datos:
+        logger.warning("⚠️ No se extrajo ningún seguido")
+        return {"estado": "fallo", "mensaje": "No se extrajo ningún seguido"}
+
+    logger.info(f"✅ Seguidos de TikTok extraídos correctamente para {username}")
+    return {
+        "estado": "ok",
+        "data": datos,
+        "excel_path": f"/download/seguidos_tiktok_{username}.xlsx"
     }

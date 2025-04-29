@@ -1,16 +1,16 @@
 from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback
-# from services.playwright_tools import iniciar_browser_con_proxy
 from playwright.sync_api import sync_playwright, TimeoutError
-
+from services.logging_config import logger
+# from services.playwright_tools import iniciar_browser_con_proxy
 
 def obtener_seguidos(username: str, max_seguidos: int = 3):
     seguidos = []
-    print(f"🚀 Iniciando extracción de seguidos para: {username}")
+    logger.info(f"🚀 Iniciando extracción de seguidos para: {username}")
 
     try:
         # ⛔ Proxy desactivado temporalmente
         # playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
-        # print(f"🧩 Proxy elegido para seguidos: {proxy}")
+        # logger.info(f"🧩 Proxy elegido para seguidos: {proxy}")
 
         # ✅ Modo sin proxy, usando tu IP
         playwright = sync_playwright().start()
@@ -18,17 +18,17 @@ def obtener_seguidos(username: str, max_seguidos: int = 3):
         context = browser.new_context(storage_state="state_instagram.json")
         page = context.new_page()
 
-        print("🌐 Accediendo al perfil...")
+        logger.info("🌐 Accediendo al perfil...")
         page.goto(f"https://www.instagram.com/{username}/", timeout=60000)
         page.wait_for_timeout(3000)
-        print("✅ Perfil cargado")
+        logger.info("✅ Perfil cargado")
 
-        print("🧭 Buscando botón de seguidos...")
+        logger.info("🧭 Buscando botón de seguidos...")
         page.click('a[href$="/following/"]', timeout=10000)
-        print("✅ Clic en botón de seguidos")
+        logger.info("✅ Clic en botón de seguidos")
         page.wait_for_timeout(6000)
 
-        print("🔄 Comenzando scroll y extracción de seguidos...")
+        logger.info("🔄 Comenzando scroll y extracción de seguidos...")
         intentos_sin_nuevos = 0
         max_intentos = 12
 
@@ -58,43 +58,43 @@ def obtener_seguidos(username: str, max_seguidos: int = 3):
                 if user not in seguidos and len(seguidos) < max_seguidos:
                     seguidos.append(user)
                     nuevos += 1
-                    print(f"👤 Seguido #{len(seguidos)}: {user}")
+                    logger.info(f"👤 Seguido #{len(seguidos)}: {user}")
 
             if nuevos == 0:
                 intentos_sin_nuevos += 1
-                print(f"⚠️ Sin nuevos seguidos. Intento {intentos_sin_nuevos}/{max_intentos}")
+                logger.warning(f"⚠️ Sin nuevos seguidos. Intento {intentos_sin_nuevos}/{max_intentos}")
             else:
                 intentos_sin_nuevos = 0
 
-        print(f"✅ Total de seguidos extraídos: {len(seguidos)}")
+        logger.info(f"✅ Total de seguidos extraídos: {len(seguidos)}")
 
         browser.close()
         playwright.stop()
 
     except TimeoutError as e:
-        print(f"❌ Timeout al interactuar con la página: {e}")
+        logger.error(f"❌ Timeout al interactuar con la página: {e}")
     except Exception as e:
-        print(f"❌ Error general durante el scraping de seguidos: {e}")
+        logger.error(f"❌ Error general durante el scraping de seguidos: {e}")
 
     return seguidos
 
 
 def scrape_followees_info(username: str, max_seguidos: int = 3):
-    print(f"🚀 Scraping de seguidos para: {username}")
+    logger.info(f"🚀 Scraping de seguidos para: {username}")
     todos_los_datos = []
 
     seguidos = obtener_seguidos(username, max_seguidos=max_seguidos)
 
     if not seguidos:
-        print("⚠️ No se encontraron seguidos.")
+        logger.warning("⚠️ No se encontraron seguidos.")
         return []
 
     for i, usuario in enumerate(seguidos):
-        print(f"🔍 ({i+1}/{len(seguidos)}) Scrapeando seguido: {usuario}")
+        logger.info(f"🔍 ({i+1}/{len(seguidos)}) Scrapeando seguido: {usuario}")
         try:
             datos = obtener_datos_perfil_instagram_con_fallback(usuario)
             todos_los_datos.append(datos)
         except Exception as e:
-            print(f"❌ Error al scrapear seguido {usuario}: {e}")
+            logger.error(f"❌ Error al scrapear seguido {usuario}: {e}")
 
     return todos_los_datos

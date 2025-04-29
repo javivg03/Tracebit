@@ -1,15 +1,14 @@
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
 from utils.busqueda_cruzada import buscar_contacto
 from utils.validator import extraer_emails, extraer_telefonos
 from services.logging_config import logger
-from services.playwright_tools import iniciar_browser_con_proxy
 from utils.normalizador import normalizar_datos_scraper
 
-def obtener_datos_perfil_tiktok(username: str, forzar_solo_bio: bool = False) -> dict:
-    logger.info(f"🚀 Iniciando scraping de perfil TikTok para: {username}")
+async def obtener_datos_perfil_tiktok(username: str, forzar_solo_bio: bool = False) -> dict:
+    logger.info(f"✨ Iniciando scraping async de perfil TikTok para: {username}")
 
     urls = [
         f"https://www.tiktok.com/@{username}",
@@ -19,81 +18,74 @@ def obtener_datos_perfil_tiktok(username: str, forzar_solo_bio: bool = False) ->
     resultado = None
 
     try:
-        playwright, browser, context, proxy = iniciar_browser_con_proxy()
-        logger.info(f"🧩 Proxy elegido: {proxy}")
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(storage_state="state_tiktok.json")
+            page = await context.new_page()
 
-        page = context.new_page()
-
-        for url in urls:
-            try:
-                logger.info(f"🌐 Visitando: {url}")
-                page.goto(url, timeout=20000)
-                page.wait_for_timeout(3000)
-
-                # Extraer bio
+            for url in urls:
                 try:
-                    bio = page.locator('[data-e2e="user-bio"]').first.inner_text(timeout=3000)
-                except PlaywrightTimeout:
-                    bio = ""
+                    logger.info(f"🌐 Visitando: {url}")
+                    await page.goto(url, timeout=20000)
+                    await page.wait_for_timeout(3000)
 
-                # Extraer nombre
-                html = page.content()
-                soup = BeautifulSoup(html, "html.parser")
-                nombre_tag = soup.find("h2")
-                nombre = nombre_tag.get_text(strip=True) if nombre_tag else username
+                    try:
+                        bio = await page.locator('[data-e2e="user-bio"]').first.inner_text(timeout=3000)
+                    except PlaywrightTimeout:
+                        bio = ""
 
-                emails = extraer_emails(bio)
-                email = emails[0] if emails else None
-                fuente_email = url if email else None
-                telefonos = extraer_telefonos(bio)
-                telefono = telefonos[0] if telefonos else None
-                hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
-                origen = "bio" if email else "no_email"
+                    html = await page.content()
+                    soup = BeautifulSoup(html, "html.parser")
+                    nombre_tag = soup.find("h2")
+                    nombre = nombre_tag.get_text(strip=True) if nombre_tag else username
 
-                seguidores = None
-                seguidos = None
+                    emails = extraer_emails(bio)
+                    email = emails[0] if emails else None
+                    fuente_email = url if email else None
+                    telefonos = extraer_telefonos(bio)
+                    telefono = telefonos[0] if telefonos else None
+                    hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
+                    origen = "bio" if email else "no_email"
 
-                if not forzar_solo_bio:
-                    # 🛠️ Aquí en el futuro podríamos intentar scrapear seguidores/seguidos
-                    # Por ahora TikTok no lo permite fácil, así que lo dejamos en None
-                    pass
+                    seguidores = None
+                    seguidos = None
 
-                resultado = normalizar_datos_scraper(
-                    nombre, username, email, fuente_email,
-                    telefono, seguidores, seguidos, hashtags, origen
-                )
+                    resultado = normalizar_datos_scraper(
+                        nombre, username, email, fuente_email,
+                        telefono, seguidores, seguidos, hashtags, origen
+                    )
 
-                if email:
-                    logger.info("✅ Email encontrado, saliendo del bucle de URLs.")
-                    break
+                    if email or telefono:
+                        logger.info("✅ Email o teléfono encontrado, saliendo del bucle de URLs.")
+                        break
 
-            except Exception as e:
-                logger.warning(f"⚠️ Error al procesar {url}: {e}")
-                continue
+                except Exception as e:
+                    logger.warning(f"⚠️ Error al procesar {url}: {e}")
+                    continue
 
-        browser.close()
-        playwright.stop()
+            await context.close()
+            await browser.close()
 
     except Exception as e:
-        logger.error(f"❌ Error general durante scraping de TikTok: {e}")
+        logger.error(f"❌ Error general durante scraping async de TikTok: {e}")
         resultado = None
 
-    if resultado and resultado.get("email"):
+    if resultado and (resultado.get("email") or resultado.get("telefono")):
         return resultado
 
-    return fallback_tiktok(username, resultado.get("nombre") if resultado else None)
+    logger.warning("⚠️ No se encontraron datos en scraping. Lanzando búsqueda cruzada...")
+    nombre_extraido = resultado.get("nombre") if resultado else username
 
-def fallback_tiktok(username: str, nombre: str = None) -> dict:
-    logger.info("🔍 Lanzando búsqueda cruzada...")
-    resultado_cruzado = buscar_contacto(
-        username,
-        nombre_completo=nombre or username,
+    resultado_cruzado = await buscar_contacto(
+        username=username,
+        nombre_completo=nombre_extraido,
         origen_actual="tiktok"
     )
 
     if resultado_cruzado:
+        logger.info(f"✅ Datos encontrados en búsqueda cruzada: {resultado_cruzado}")
         return normalizar_datos_scraper(
-            resultado_cruzado.get("nombre") or nombre or username,
+            resultado_cruzado.get("nombre") or nombre_extraido,
             username,
             resultado_cruzado.get("email"),
             resultado_cruzado.get("url_fuente"),
@@ -102,7 +94,7 @@ def fallback_tiktok(username: str, nombre: str = None) -> dict:
             f"búsqueda cruzada ({resultado_cruzado.get('origen')})"
         )
 
-    logger.warning("⚠️ No se encontró ningún dato en búsqueda cruzada.")
+    logger.warning(f"❌ No se encontró ningún dato útil para {username} tras scraping + búsqueda cruzada.")
     return normalizar_datos_scraper(
-        nombre, username, None, None, None, None, None, [], "error"
+        None, username, None, None, None, None, None, [], "error"
     )

@@ -16,7 +16,7 @@ def obtener_datos_canal_telegram(username: str) -> dict:
         res = requests.get(url, headers=headers, timeout=10)
         if res.status_code != 200:
             logger.warning(f"❌ No se pudo acceder al canal ({res.status_code})")
-            return lanzar_fallback_telegram(username)
+            raise Exception(f"Status code {res.status_code}")
 
         soup = BeautifulSoup(res.text, "html.parser")
 
@@ -40,7 +40,7 @@ def obtener_datos_canal_telegram(username: str) -> dict:
         except (AttributeError, ValueError):
             seguidores = None
 
-        origen = "canal" if email else "no_email"
+        origen = "canal" if email or telefono else "no_email"
 
         datos = normalizar_datos_scraper(
             nombre=title.text.strip() if title else None,
@@ -54,28 +54,24 @@ def obtener_datos_canal_telegram(username: str) -> dict:
             origen=origen
         )
 
-        if email:
+        if datos.get("email") or datos.get("telefono"):
             return datos
 
-        logger.warning("⚠️ Canal sin email. Lanzando búsqueda cruzada...")
-        return lanzar_fallback_telegram(username, datos.get("nombre"))
+        logger.warning("⚠️ Canal sin email ni teléfono. Lanzando búsqueda cruzada...")
 
     except Exception as e:
         logger.error(f"❌ Error al scrapear el canal: {e}")
-        return lanzar_fallback_telegram(username)
 
-
-def lanzar_fallback_telegram(username: str, nombre: str = None) -> dict:
-    logger.info("🔍 Lanzando búsqueda cruzada...")
+    # 🔍 Si falló scraping o no hay datos → búsqueda cruzada (solo en plataformas externas)
     resultado = buscar_contacto(
-        username,
-        nombre_completo=nombre or username,
+        username=username,
+        nombre_completo=username,
         origen_actual="telegram"
     )
 
     if resultado:
         return normalizar_datos_scraper(
-            nombre=resultado.get("nombre") or nombre or username,
+            nombre=resultado.get("nombre") or username,
             usuario=username,
             email=resultado.get("email"),
             fuente_email=resultado.get("url_fuente"),
@@ -86,8 +82,9 @@ def lanzar_fallback_telegram(username: str, nombre: str = None) -> dict:
             origen=f"búsqueda cruzada ({resultado.get('origen')})"
         )
 
+    logger.warning(f"❌ No se encontró ningún dato útil para {username} tras scraping + búsqueda cruzada.")
     return normalizar_datos_scraper(
-        nombre=nombre,
+        nombre=None,
         usuario=username,
         email=None,
         fuente_email=None,

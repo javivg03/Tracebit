@@ -1,10 +1,10 @@
-from utils.busqueda_cruzada import buscar_contacto
 from utils.validator import extraer_emails, extraer_telefonos
+from utils.normalizador import normalizar_datos_scraper
+from utils.busqueda_cruzada import buscar_contacto
 from services.user_agents import random_user_agent
 from services.proxy_pool import ProxyPool
 from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
-from utils.normalizador import normalizar_datos_scraper
 import instaloader
 
 def scrapear_perfil_instagram_instaloader(username: str, forzar_solo_bio: bool = False):
@@ -49,14 +49,10 @@ def scrapear_perfil_instagram_instaloader(username: str, forzar_solo_bio: bool =
         telefonos = extraer_telefonos(bio)
         telefono = telefonos[0] if telefonos else None
 
-        origen = "bio" if email else "no_email"
+        seguidores = profile.followers if not forzar_solo_bio else None
+        seguidos = profile.followees if not forzar_solo_bio else None
 
-        seguidores = None
-        seguidos = None
-
-        if not forzar_solo_bio:
-            seguidores = profile.followers
-            seguidos = profile.followees
+        origen = "bio" if email or telefono else "no_email"
 
         return normalizar_datos_scraper(
             nombre, username, email, email_fuente,
@@ -76,7 +72,6 @@ def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 1, f
         try:
             playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
             logger.info(f"🧩 Proxy elegido: {proxy}")
-
             page = context.new_page()
 
             try:
@@ -97,7 +92,7 @@ def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 1, f
 
                 telefonos = extraer_telefonos(bio)
                 telefono = telefonos[0] if telefonos else None
-                origen = "bio" if email else "no_email"
+                origen = "bio" if email or telefono else "no_email"
 
                 seguidores = None
                 seguidos = None
@@ -109,11 +104,12 @@ def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 1, f
 
                     try:
                         seguidores = int(seguidores_text.replace(",", "").replace(".", ""))
-                    except (ValueError, TypeError, AttributeError):
+                    except:
                         seguidores = None
+
                     try:
                         seguidos = int(seguidos_text.replace(",", "").replace(".", ""))
-                    except (ValueError, TypeError, AttributeError):
+                    except:
                         seguidos = None
 
                 logger.info("🪩 Cerrando navegador y devolviendo datos extraídos...")
@@ -139,29 +135,32 @@ def scrapear_perfil_instagram_playwright(username: str, max_intentos: int = 1, f
     return None
 
 def obtener_datos_perfil_instagram_con_fallback(username: str, forzar_solo_bio: bool = False) -> dict:
+    logger.info(f"🚀 Iniciando scraping de perfil de Instagram para: {username}")
+
+    # 1️⃣ Instaloader
     datos = scrapear_perfil_instagram_instaloader(username, forzar_solo_bio=forzar_solo_bio)
-
-    if datos and datos.get("email"):
+    if datos and (datos.get("email") or datos.get("telefono")):
         return datos
 
-    logger.warning("⚠️ Instaloader falló o sin email. Probando con Playwright...")
+    logger.warning("⚠️ Instaloader falló o sin datos. Probando con Playwright...")
+
+    # 2️⃣ Playwright
     datos = scrapear_perfil_instagram_playwright(username, forzar_solo_bio=forzar_solo_bio)
-
-    if datos and datos.get("email"):
+    if datos and (datos.get("email") or datos.get("telefono")):
         return datos
 
-    nombre_extraido = datos.get("nombre") if datos else username
+    logger.warning("⚠️ Playwright también falló o no encontró datos. Lanzando búsqueda cruzada...")
 
-    logger.info("🔍 Lanzando búsqueda cruzada...")
+    # 3️⃣ Búsqueda cruzada simplificada (solo plataformas personales y buscadores)
     resultado_cruzado = buscar_contacto(
         username=username,
-        nombre_completo=nombre_extraido,
+        nombre_completo=username,
         origen_actual="instagram"
     )
 
-    if resultado_cruzado and (resultado_cruzado.get("email") or resultado_cruzado.get("telefono")):
+    if resultado_cruzado:
         return normalizar_datos_scraper(
-            resultado_cruzado.get("nombre") or nombre_extraido,
+            resultado_cruzado.get("nombre") or username,
             username,
             resultado_cruzado.get("email"),
             resultado_cruzado.get("url_fuente"),
@@ -170,7 +169,6 @@ def obtener_datos_perfil_instagram_con_fallback(username: str, forzar_solo_bio: 
             f"búsqueda cruzada ({resultado_cruzado.get('origen')})"
         )
 
-    logger.warning(f"⚠️ No se encontró ningún dato útil para {username} tras scraping + búsqueda cruzada.")
     return normalizar_datos_scraper(
         None, username, None, None, None, None, None, [], "error"
     )
