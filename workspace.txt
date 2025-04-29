@@ -13,20 +13,26 @@ fct_scraper_backend/
 │   └── exporter.py
 
 ├── scraping/
-│   ├── facebook.py
-│   │   └── __init__.py
+│   ├── facebook/
+│   │   ├── __init__.py
+│   │   ├── perfil.py
 │   ├── telegram/
-│   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   ├── canal.py
 │   ├── tiktok/
 │   │   ├── __init__.py
 │   │   ├── perfil.py
 │   │   ├── seguidos.py
 │   │   └── seguidores.py
-│   ├── web.py
+│   ├── web/
 │   │   ├── __init__.py
 │   │   └── web_scraper.py
-│   ├── x.py
-│   │   └── __init__.py
+│   ├── x/
+│   │   ├── __init__.py
+│   │   ├── perfil.py
+│   ├── youtube/
+│   │   ├── __init__.py
+│   │   ├── canal.py
 │   └── instagram/
 │       ├── __init__.py
 │       ├── perfil.py
@@ -44,8 +50,12 @@ fct_scraper_backend/
 │   ├── __init__.py
 │   ├── web.py
 │   ├── instagram.py
+│   ├── youtube.py
+│   ├── facebook.py
+│   ├── x.py
 │   ├── tiktok.py
-│   └── telegram.py
+│   ├── telegram.py
+│   └── resultados.py
 
 ├── static/
 │   ├── css/

@@ -5,6 +5,9 @@ from fastapi.staticfiles import StaticFiles
 from routes.instagram import router_instagram
 from routes.tiktok import router_tiktok
 from routes.telegram import router_telegram
+from routes.youtube import router_youtube
+from routes.x import router_x
+from routes.facebook import router_facebook
 from routes.web import router_web
 
 from routes.resultados import router_resultados
@@ -27,10 +30,12 @@ def root():
 app.include_router(router_instagram)
 app.include_router(router_tiktok)
 app.include_router(router_telegram)
+app.include_router(router_youtube)
+app.include_router(router_x)
+app.include_router(router_facebook)
 app.include_router(router_web)
-app.include_router(router_resultados)  # si lo creamos para tareas Celery
+app.include_router(router_resultados)
 
-# ⚠️ Cuando tengas Facebook, YouTube, X:
-# app.include_router(router_facebook)
-# app.include_router(router_youtube)
-# app.include_router(router_x)
+# ⚠️ Cuando tengas Facebook
+
+

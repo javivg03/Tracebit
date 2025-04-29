@@ -1,3 +1,4 @@
+import asyncio
 from starlette.concurrency import run_in_threadpool
 from services.logging_config import logger
 from exports.exporter import export_to_excel
@@ -5,7 +6,11 @@ from utils.history import guardar_historial
 
 async def procesar_scraping(username: str, red: str, funcion_scraper):
     logger.info(f"🚀 Iniciando scraping de perfil {red.upper()} para: {username}")
-    datos = await run_in_threadpool(funcion_scraper, username)
+
+    if asyncio.iscoroutinefunction(funcion_scraper):
+        datos = await funcion_scraper(username)
+    else:
+        datos = await run_in_threadpool(funcion_scraper, username)
 
     if datos and datos.get("email"):
         path = f"exports/{red}_{username}.xlsx"

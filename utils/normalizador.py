@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 def normalizar_datos_scraper(
     nombre: Optional[str],
@@ -9,12 +9,14 @@ def normalizar_datos_scraper(
     seguidores: Optional[int],
     seguidos: Optional[int],
     hashtags: Optional[list],
-    origen: str
-) -> Dict[str, Optional[str]]:
+    origen: str,
+    **extras: Any  # acepta cualquier otro campo adicional (como enlaces_web)
+) -> Dict[str, Any]:
     """
     Devuelve un diccionario con la estructura unificada de datos del perfil.
+    Admite campos adicionales como enlaces_web mediante kwargs.
     """
-    return {
+    datos = {
         "nombre": nombre or None,
         "usuario": usuario,
         "email": email or None,
@@ -25,3 +27,8 @@ def normalizar_datos_scraper(
         "hashtags": hashtags or [],
         "origen": origen
     }
+
+    # Añadir campos adicionales (enlaces_web, etc.)
+    datos.update(extras)
+
+    return datos
