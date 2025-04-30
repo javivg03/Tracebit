@@ -6,17 +6,16 @@ async function scrapear() {
 
   if (!username) return alert("Por favor ingresa un nombre de usuario.");
 
-  // Limpiar resultados anteriores
   document.getElementById("resultado").innerHTML = "";
   document.getElementById("descarga").style.display = "none";
   resetearBarraProgreso();
 
-  if (tipo === "perfil") {
+  if (tipo === "perfil" || tipo === "canal") {
     document.getElementById("loader").style.display = "block";
     document.getElementById("barra-progreso-container").style.display = "none";
 
     try {
-      const res = await fetch(`/scrape/${plataforma}`, {
+      const res = await fetch(`/scrape/${plataforma}/${tipo}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username })
@@ -39,20 +38,16 @@ async function scrapear() {
       document.getElementById("resultado").innerHTML = "❌ Error inesperado al scrapear.";
     }
 
-  } else if (tipo === "seguidores" || tipo === "seguidos") {
+  } else if (["seguidores", "seguidos", "tweets"].includes(tipo)) {
     document.getElementById("loader").style.display = "none";
     document.getElementById("barra-progreso-container").style.display = "block";
     actualizarBarraProgreso(0, maxSeguidores);
 
     try {
-      const endpoint = tipo === "seguidores"
-        ? `/scrapear/seguidores-info/${username}`
-        : `/scrapear/seguidos-info/${username}`;
-
-      const tareaRes = await fetch(endpoint, {
+      const tareaRes = await fetch(`/scrape/${plataforma}/${tipo}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ max_seguidores: maxSeguidores })  // usamos el mismo campo para ambos
+        body: JSON.stringify({ username, max_seguidores: maxSeguidores })
       });
 
       const { tarea_id } = await tareaRes.json();
@@ -71,9 +66,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const labelMax = document.getElementById("label-max");
 
   tipoSelect.addEventListener("change", () => {
-    if (["seguidores", "seguidos"].includes(tipoSelect.value)) {
+    if (["seguidores", "seguidos", "tweets"].includes(tipoSelect.value)) {
       grupoMax.style.display = "block";
-      labelMax.textContent = tipoSelect.value === "seguidores"
+      labelMax.textContent = tipoSelect.value === "tweets"
+        ? "Nº máximo de tweets a scrapear:"
+        : tipoSelect.value === "seguidores"
         ? "Nº máximo de seguidores a scrapear:"
         : "Nº máximo de seguidos a scrapear:";
     } else {
@@ -150,7 +147,7 @@ function mostrarResultado(data) {
 
   let html = "";
   (Array.isArray(data) ? data : [data]).forEach(r => {
-    if (!r.email) return;
+    if (!r.email && !r.telefono && !r.texto) return;
 
     html += `<div class="card p-3 mb-2"><h5>${r.nombre || r.usuario}</h5><ul class="list-group list-group-flush">`;
     for (const key in r) {
@@ -162,7 +159,7 @@ function mostrarResultado(data) {
     html += `</ul></div>`;
   });
 
-  resultadoDiv.innerHTML = html || "<p>No se encontraron perfiles con email.</p>";
+  resultadoDiv.innerHTML = html || "<p>No se encontraron perfiles con información útil.</p>";
 }
 
 function activarDescarga(path) {

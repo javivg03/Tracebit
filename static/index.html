@@ -15,7 +15,12 @@
     <label class="form-label">Plataforma:</label>
     <select id="plataforma" class="form-select w-auto">
       <option value="instagram">Instagram</option>
-      <!-- Puedes añadir más plataformas aquí -->
+      <option value="tiktok">TikTok</option>
+      <option value="youtube">YouTube</option>
+      <option value="facebook">Facebook</option>
+      <option value="x">X (Twitter)</option>
+      <option value="telegram">Telegram</option>
+      <option value="web">Web</option>
     </select>
 
     <label class="form-label mt-2">Tipo de scraping:</label>
@@ -23,21 +28,22 @@
       <option value="perfil">Perfil</option>
       <option value="seguidores">Seguidores</option>
       <option value="seguidos">Seguidos</option>
-
+      <option value="tweets">Tweets</option>
+      <option value="canal">Canal</option>
     </select>
 
-    <input type="text" id="username" class="form-control my-2" placeholder="Nombre de usuario">
+    <input type="text" id="username" class="form-control my-2" placeholder="Nombre de usuario o canal">
 
     <!-- input para máximo usuarios a scrapear -->
     <div id="grupo-max-seguidores" style="display: none;">
-      <label id="label-max" class="form-label mt-2">Nº máximo de usuarios a scrapear:</label>
-      <input type="number" id="max_seguidores" class="form-control w-auto" value="3" min="1" max="10">
+      <label id="label-max" class="form-label mt-2">Nº máximo de usuarios/tweets a scrapear:</label>
+      <input type="number" id="max_seguidores" class="form-control w-auto" value="3" min="1" max="50">
     </div>
 
     <button class="btn btn-primary mt-3" onclick="scrapear()">Buscar y Scrapear</button>
   </div>
 
-  <!-- Barra de progreso (seguidores) -->
+  <!-- Barra de progreso (seguidores/seguidos/tweets) -->
   <div id="barra-progreso-container" class="my-3" style="display: none;">
     <label class="form-label">Progreso:</label>
     <div class="progress">
