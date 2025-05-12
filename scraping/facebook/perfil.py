@@ -1,43 +1,43 @@
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright
-
+from services.playwright_tools import iniciar_browser_con_proxy
+from services.logging_config import logger
+from services.proxy_pool import ProxyPool
+from services.proxy_format import formatear_proxy_playwright
 from utils.validator import extraer_emails, extraer_telefonos
 from utils.normalizador import normalizar_datos_scraper
-from services.logging_config import logger
 from utils.busqueda_cruzada import buscar_contacto
+import traceback
 
-
-async def obtener_datos_perfil_facebook(username_o_nombre: str, forzar_solo_bio: bool = False) -> dict:
+def obtener_datos_perfil_facebook(username_o_nombre: str, forzar_solo_bio: bool = False) -> dict:
     logger.info(f"✨ Iniciando scraping de Facebook para: {username_o_nombre}")
 
-    # Decide si buscar por username o por nombre real
     es_nombre_real = " " in username_o_nombre.strip()
-
     urls = []
+
     if es_nombre_real:
-        # Buscar por nombre real
         urls.append(f"https://www.facebook.com/public?q={quote_plus(username_o_nombre)}")
     else:
-        # Primero intentar como username, luego búsqueda pública
         urls.append(f"https://www.facebook.com/{username_o_nombre}")
         urls.append(f"https://www.facebook.com/public?q={quote_plus(username_o_nombre)}")
 
     resultado = None
+    intentos_max = 5
+    intentos = 0
 
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context()
-            page = await context.new_page()
+    while intentos < intentos_max:
+        try:
+            playwright, browser, context, proxy = iniciar_browser_con_proxy()
+            page = context.new_page()
+            logger.info(f"🧩 Usando proxy: {proxy['ip']}:{proxy['port']}")
 
             for url in urls:
                 try:
                     logger.info(f"🌐 Visitando: {url}")
-                    await page.goto(url, timeout=15000)
-                    await page.wait_for_timeout(3000)
+                    page.goto(url, timeout=15000)
+                    page.wait_for_timeout(3000)
 
-                    html = await page.content()
+                    html = page.content()
                     soup = BeautifulSoup(html, "html.parser")
                     text = soup.get_text(separator=" ", strip=True)
 
@@ -59,24 +59,34 @@ async def obtener_datos_perfil_facebook(username_o_nombre: str, forzar_solo_bio:
                             hashtags=[],
                             origen="facebook"
                         )
-                        break
+                        break  # Si encontramos datos útiles, salimos del bucle
 
                 except Exception as e:
                     logger.warning(f"⚠️ Error procesando {url}: {e}")
                     continue
 
-            await page.close()
-            await context.close()
-            await browser.close()
+            # Cerramos navegador siempre
+            try:
+                page.close()
+                context.close()
+                browser.close()
+                playwright.stop()
+            except Exception as e:
+                logger.warning(f"⚠️ Error al cerrar navegador: {e}")
 
-    except Exception as e:
-        logger.error(f"❌ Error general durante scraping de Facebook: {e}")
+            if resultado:
+                if not resultado.get("email") and not resultado.get("telefono"):
+                    logger.warning("❌ Perfil sin datos útiles, descartando...")
+                    return {"error": "Perfil sin datos útiles"}
+                return resultado
 
-    # Si encontramos algo útil
-    if resultado and (resultado.get("email") or resultado.get("telefono")):
-        return resultado
+        except Exception as e:
+            logger.warning(f"❌ Error al iniciar navegador con proxy – {e}")
+            traceback.print_exc()
+            intentos += 1
+            continue
 
-    # 🔍 Si no encontramos nada, lanzar búsqueda cruzada limitada
+    # 🔍 Si no se encuentra nada, ejecutamos búsqueda cruzada
     logger.warning(f"⚠️ No se encontraron datos en scraping. Lanzando búsqueda cruzada...")
     resultado_cruzado = buscar_contacto(
         username=username_o_nombre,

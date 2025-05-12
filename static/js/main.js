@@ -10,12 +10,47 @@ async function scrapear() {
   document.getElementById("descarga").style.display = "none";
   resetearBarraProgreso();
 
-  if (tipo === "perfil" || tipo === "canal") {
+  const endpointMap = {
+    instagram: {
+      perfil: "/instagram/perfil",
+      seguidores: "/instagram/seguidores",
+      seguidos: "/instagram/seguidos"
+    },
+    tiktok: {
+      perfil: "/tiktok/perfil",
+      seguidores: "/tiktok/seguidores",
+      seguidos: "/tiktok/seguidos"
+    },
+    x: {
+      perfil: "/x/perfil",
+      tweets: "/x/tweets"
+    },
+    youtube: {
+      canal: "/youtube/canal"
+    },
+    telegram: {
+      canal: "/telegram/canal"
+    },
+    facebook: {
+      perfil: "/facebook/perfil"
+    },
+    web: {
+      perfil: "/web/perfil"
+    }
+  };
+
+  const endpoint = endpointMap[plataforma]?.[tipo];
+  if (!endpoint) {
+    alert("Tipo de scraping no disponible para esta plataforma.");
+    return;
+  }
+
+  if (["perfil", "canal"].includes(tipo)) {
     document.getElementById("loader").style.display = "block";
     document.getElementById("barra-progreso-container").style.display = "none";
 
     try {
-      const res = await fetch(`/scrape/${plataforma}/${tipo}`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username })
@@ -44,13 +79,14 @@ async function scrapear() {
     actualizarBarraProgreso(0, maxSeguidores);
 
     try {
-      const tareaRes = await fetch(`/scrape/${plataforma}/${tipo}`, {
+      const tareaRes = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, max_seguidores: maxSeguidores })
       });
 
       const { tarea_id } = await tareaRes.json();
+      if (!tarea_id) throw new Error("Tarea no iniciada");
       esperarResultado(tarea_id, maxSeguidores);
 
     } catch (err) {
@@ -61,22 +97,60 @@ async function scrapear() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const plataformaSelect = document.getElementById("plataforma");
   const tipoSelect = document.getElementById("tipo");
   const grupoMax = document.getElementById("grupo-max-seguidores");
   const labelMax = document.getElementById("label-max");
 
+  const tiposPorPlataforma = {
+    instagram: ["perfil", "seguidores", "seguidos"],
+    tiktok: ["perfil", "seguidores", "seguidos"],
+    x: ["perfil", "tweets"],
+    youtube: ["canal"],
+    telegram: ["canal"],
+    facebook: ["perfil"],
+    web: ["perfil"]
+  };
+
+  const etiquetasTipo = {
+    perfil: "Perfil",
+    seguidores: "Seguidores",
+    seguidos: "Seguidos",
+    tweets: "Tweets",
+    canal: "Canal"
+  };
+
+  plataformaSelect.addEventListener("change", () => {
+    const plataforma = plataformaSelect.value;
+    const tiposDisponibles = tiposPorPlataforma[plataforma] || [];
+
+    tipoSelect.innerHTML = "";
+    tiposDisponibles.forEach(tipo => {
+      const option = document.createElement("option");
+      option.value = tipo;
+      option.textContent = etiquetasTipo[tipo] || tipo;
+      tipoSelect.appendChild(option);
+    });
+
+    tipoSelect.dispatchEvent(new Event("change"));
+  });
+
   tipoSelect.addEventListener("change", () => {
     if (["seguidores", "seguidos", "tweets"].includes(tipoSelect.value)) {
       grupoMax.style.display = "block";
-      labelMax.textContent = tipoSelect.value === "tweets"
-        ? "Nº máximo de tweets a scrapear:"
-        : tipoSelect.value === "seguidores"
-        ? "Nº máximo de seguidores a scrapear:"
-        : "Nº máximo de seguidos a scrapear:";
+      labelMax.textContent =
+        tipoSelect.value === "tweets"
+          ? "Nº máximo de tweets a scrapear:"
+          : tipoSelect.value === "seguidores"
+          ? "Nº máximo de seguidores a scrapear:"
+          : "Nº máximo de seguidos a scrapear:";
     } else {
       grupoMax.style.display = "none";
     }
   });
+
+  // Inicializar en primer render
+  plataformaSelect.dispatchEvent(new Event("change"));
 });
 
 async function esperarResultado(tareaId, maxSeguidores) {
@@ -91,12 +165,7 @@ async function esperarResultado(tareaId, maxSeguidores) {
   const check = async () => {
     try {
       const res = await fetch(`/resultado-tarea/${tareaId}`);
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`❌ Error HTTP ${res.status}: ${text}`);
-      }
-
+      if (!res.ok) throw new Error(`❌ Error HTTP ${res.status}`);
       const json = await res.json();
 
       if (json.estado === "pendiente") {
@@ -108,7 +177,7 @@ async function esperarResultado(tareaId, maxSeguidores) {
 
         if (json.estado === "error") {
           document.getElementById("resultado").innerHTML = `❌ ${json.mensaje || "Error en la tarea de scraping."}`;
-        } else if (json.estado === "ok" || json.estado === "completado") {
+        } else {
           mostrarResultado(json.data);
           activarDescarga(json.excel_path);
         }
@@ -147,7 +216,7 @@ function mostrarResultado(data) {
 
   let html = "";
   (Array.isArray(data) ? data : [data]).forEach(r => {
-    if (!r.email && !r.telefono && !r.texto) return;
+    if (!r || Object.keys(r).length === 0) return;
 
     html += `<div class="card p-3 mb-2"><h5>${r.nombre || r.usuario}</h5><ul class="list-group list-group-flush">`;
     for (const key in r) {

@@ -1,48 +1,43 @@
 import re
+import phonenumbers
 from email_validator import validate_email, EmailNotValidError
+from phonenumbers.phonenumberutil import NumberParseException
 
+# Regex para extraer emails
 EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
-PHONE_REGEX = r"\+?[0-9\s().-]{7,}"
 
-def validar_email(email: str):
+def extraer_emails(texto: str) -> list:
     """
-    Valida un email. Devuelve el email normalizado si es válido, o None si no lo es.
+    Extrae todos los emails que coincidan con el patrón general.
+    """
+    return re.findall(EMAIL_REGEX, texto)
+
+
+def extraer_telefonos(texto: str, region_default: str = "ES") -> list:
+    """
+    Extrae teléfonos válidos desde texto usando la librería 'phonenumbers'.
+    Retorna en formato internacional E.164 (+34...).
+    """
+    telefonos_validos = []
+
+    for match in phonenumbers.PhoneNumberMatcher(texto, region_default):
+        numero = match.number
+        try:
+            if phonenumbers.is_possible_number(numero) and phonenumbers.is_valid_number(numero):
+                telefono_formateado = phonenumbers.format_number(numero, phonenumbers.PhoneNumberFormat.E164)
+                telefonos_validos.append(telefono_formateado)
+        except NumberParseException:
+            continue
+
+    return telefonos_validos
+
+
+def validar_email(email: str) -> bool:
+    """
+    Valida que un email sea sintácticamente correcto y estructurado.
     """
     try:
-        resultado = validate_email(email, check_deliverability=False)
-        return resultado.normalized
+        validate_email(email)
+        return True
     except EmailNotValidError:
-        return None
-
-def validar_telefono(numero: str):
-    """
-    Valida un número de teléfono básico. Si es válido, lo devuelve limpio; si no, devuelve None.
-    """
-    numero = numero.strip()
-    if len(numero) >= 8 and re.match(PHONE_REGEX, numero):
-        return numero
-    return None
-
-def extraer_emails(texto: str):
-    """
-    Extrae todos los emails válidos desde un texto, eliminando duplicados.
-    """
-    encontrados = re.findall(EMAIL_REGEX, texto, re.IGNORECASE)
-    validos = set()
-    for e in encontrados:
-        ve = validar_email(e)
-        if ve:
-            validos.add(ve)
-    return list(validos)
-
-def extraer_telefonos(texto: str):
-    """
-    Extrae todos los teléfonos válidos desde un texto, eliminando duplicados.
-    """
-    encontrados = re.findall(PHONE_REGEX, texto)
-    validos = set()
-    for t in encontrados:
-        vt = validar_telefono(t)
-        if vt:
-            validos.add(vt)
-    return list(validos)
+        return False

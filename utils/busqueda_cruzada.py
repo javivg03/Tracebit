@@ -5,6 +5,7 @@ from duckduckgo_search import DDGS
 from utils.validator import extraer_emails, extraer_telefonos
 from services.proxy_pool import ProxyPool
 from services.logging_config import logger
+from services.proxy_format import formatear_proxy_requests
 
 # =========================
 # FUNCIONES DE EXTRACCIÓN WEB
@@ -20,7 +21,8 @@ def analizar_url_contacto(url, origen="externo", timeout=5):
 
         pool = ProxyPool()
         proxy = pool.get_random_proxy()
-        proxies = {"http": proxy, "https": proxy} if proxy else None
+        proxy_url = formatear_proxy_requests(proxy) if proxy else None
+        proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
 
         res = requests.get(url, timeout=timeout, proxies=proxies)
         if res.status_code == 200:
@@ -38,6 +40,7 @@ def analizar_url_contacto(url, origen="externo", timeout=5):
                 }
     except Exception as e:
         logger.warning(f"❌ Error accediendo a {url}: {e}")
+        # pool.remove_proxy(proxy)  # opcional
     return None
 
 # =========================

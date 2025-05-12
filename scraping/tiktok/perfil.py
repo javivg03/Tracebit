@@ -76,7 +76,7 @@ async def obtener_datos_perfil_tiktok(username: str, forzar_solo_bio: bool = Fal
     logger.warning("⚠️ No se encontraron datos en scraping. Lanzando búsqueda cruzada...")
     nombre_extraido = resultado.get("nombre") if resultado else username
 
-    resultado_cruzado = await buscar_contacto(
+    resultado_cruzado = buscar_contacto(
         username=username,
         nombre_completo=nombre_extraido,
         origen_actual="tiktok"

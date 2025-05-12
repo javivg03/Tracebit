@@ -72,13 +72,13 @@ fct_scraper_backend/
 │   └── tiktok.py
 
 ├── services/
-│   ├── __init__.py
-│   ├── logging_config.py
-│   ├── playwright_tools.py
-│   ├── proxy_checker.py
-│   ├── proxy_loader.py
-│   ├── proxy_pool.py
-│   ├── proxy_scraper.py
-│   ├── proxies.json
-│   ├── raw_proxies.txt
-│   └── user_agents.py
+│   ├── proxy_loader.py      # ✅ Convierte raw_proxies.txt → proxies.json
+│   ├── proxy_checker.py     # ✅ Verifica si un proxy funciona (requests + Playwright)
+│   ├── proxy_pool.py        # ✅ Gestiona el pool: carga, valida, da uno aleatorio, etc.
+│   ├── proxy_format.py      # ✅ Formatea el proxy para requests o Playwright
+│   ├── playwright_tools.py  # ⚙️ Usa proxies válidos con Playwright para scrapear
+│   ├── raw_proxies.txt      # ✍️ Proxies en formato plano (copiados de IPRoyal)
+│   ├── proxies.json         # ✅ Proxies válidos listos para usar (generado)
+│   ├── logging_config.py    # ✅ Define formato y salida de los logs
+│   ├── user_agents.py       # ⚙️ Lista rotativa de user-agents
+│   ├── proxy_scraper.py     # ❌ Inutilizado

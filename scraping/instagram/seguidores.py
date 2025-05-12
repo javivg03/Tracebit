@@ -1,21 +1,17 @@
-from playwright.sync_api import sync_playwright, TimeoutError
 from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback
+from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
-# from services.proxy_pool import ProxyPool
-# from services.playwright_tools import iniciar_browser_con_proxy
+import concurrent.futures
+from playwright.sync_api import TimeoutError
+
 
 def obtener_seguidores(username: str, max_seguidores: int = 3):
     seguidores = []
     logger.info(f"🚀 Iniciando extracción de seguidores para: {username}")
 
     try:
-        # ⛔ Uso de proxy desactivado temporalmente
-        # playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
-
-        # ✅ Modo sin proxy (con tu IP)
-        playwright = sync_playwright().start()
-        browser = playwright.chromium.launch(headless=True)
-        context = browser.new_context(storage_state="state_instagram.json")
+        playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
+        logger.info(f"🧩 Proxy usado para seguidores: {proxy}")
         page = context.new_page()
 
         logger.info("🌐 Accediendo al perfil...")
@@ -74,13 +70,16 @@ def obtener_seguidores(username: str, max_seguidores: int = 3):
         logger.error(f"❌ Error inesperado durante el scraping: {e}")
     finally:
         logger.info("🪩 Cerrando navegador...")
-        browser.close()
-        playwright.stop()
+        try:
+            browser.close()
+            playwright.stop()
+        except Exception:
+            pass
 
     return seguidores
 
 
-def scrape_followers_info(username: str, max_seguidores: int = 3):
+def scrape_followers_info(username: str, max_seguidores: int = 3, timeout_por_seguidor: int = 30):
     logger.info(f"🚀 Scraping de seguidores para: {username}")
     todos_los_datos = []
 
@@ -92,10 +91,18 @@ def scrape_followers_info(username: str, max_seguidores: int = 3):
 
     for i, usuario in enumerate(seguidores):
         logger.info(f"🔍 ({i+1}/{len(seguidores)}) Scrapeando seguidor: {usuario}")
-        try:
-            datos = obtener_datos_perfil_instagram_con_fallback(usuario)
-            todos_los_datos.append(datos)
-        except Exception as e:
-            logger.error(f"❌ Error al scrapear seguidor {usuario}: {e}")
 
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(obtener_datos_perfil_instagram_con_fallback, usuario)
+            try:
+                datos = future.result(timeout=timeout_por_seguidor)
+                todos_los_datos.append(datos)
+                logger.info(f"✅ Finalizado scraping de seguidor {usuario}")
+            except concurrent.futures.TimeoutError:
+                logger.warning(f"⚠️ Timeout al scrapear seguidor {usuario} (>{timeout_por_seguidor}s)")
+            except Exception as e:
+                logger.error(f"❌ Error inesperado con {usuario}: {e}")
+
+    logger.info(f"📦 Scraping completado. Seguidores procesados: {len(todos_los_datos)}")
     return todos_los_datos
+
