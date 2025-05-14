@@ -49,11 +49,21 @@ async function scrapear() {
     document.getElementById("loader").style.display = "block";
     document.getElementById("barra-progreso-container").style.display = "none";
 
+    const habilitarBusquedaWeb = document.getElementById("habilitar_busqueda_web")?.checked || false;
+
+    const body = {
+      username: username
+    };
+
+    if (["perfil", "canal"].includes(tipo)) {
+      body.habilitar_busqueda_web = habilitarBusquedaWeb;
+    }
+
     try {
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username })
+        body: JSON.stringify(body)
       });
 
       const json = await res.json();
@@ -79,11 +89,22 @@ async function scrapear() {
     actualizarBarraProgreso(0, maxSeguidores);
 
     try {
-      const tareaRes = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, max_seguidores: maxSeguidores })
-      });
+      const payload = { username };
+
+if (tipo === "seguidores") {
+  payload.max_seguidores = maxSeguidores;
+} else if (tipo === "seguidos") {
+  payload.max_seguidos = maxSeguidores;
+} else if (tipo === "tweets") {
+  payload.max_tweets = maxSeguidores;
+}
+
+const tareaRes = await fetch(endpoint, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload)
+});
+
 
       const { tarea_id } = await tareaRes.json();
       if (!tarea_id) throw new Error("Tarea no iniciada");
@@ -133,6 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     tipoSelect.dispatchEvent(new Event("change"));
+    mostrarOpciones(); // ✅ Actualiza la visibilidad del checkbox
   });
 
   tipoSelect.addEventListener("change", () => {
@@ -147,11 +169,21 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       grupoMax.style.display = "none";
     }
+
+    mostrarOpciones(); // ✅ Actualiza la visibilidad del checkbox
   });
 
-  // Inicializar en primer render
+  // Inicializar al cargar la página
   plataformaSelect.dispatchEvent(new Event("change"));
 });
+
+function mostrarOpciones() {
+  const tipo = document.getElementById("tipo").value;
+  const plataforma = document.getElementById("plataforma").value;
+
+  const mostrarCheckbox = tipo === "perfil" && plataforma !== "web";
+  document.getElementById("opcion-busqueda-cruzada").style.display = mostrarCheckbox ? "block" : "none";
+}
 
 async function esperarResultado(tareaId, maxSeguidores) {
   let progreso = 0;

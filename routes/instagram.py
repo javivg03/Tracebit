@@ -8,33 +8,45 @@ from utils.scraping_handler import procesar_scraping
 
 router_instagram = APIRouter(prefix="/instagram")
 
+
 # ========== Pydantic Models ==========
 
 class InstagramPerfilInput(BaseModel):
-    username: str
+	username: str
+	habilitar_busqueda_web: bool = False
+
 
 class SeguidoresInput(BaseModel):
-    username: str
-    max_seguidores: int = 10
+	username: str
+	max_seguidores: int = 10
+
 
 class SeguidosInput(BaseModel):
-    username: str
-    max_seguidos: int = 10
+	username: str
+	max_seguidos: int = 10
+
 
 # ========== Endpoints ==========
 
 @router_instagram.post("/perfil")
 async def instagram_scraper(data: InstagramPerfilInput):
-    return await procesar_scraping(data.username, "instagram", obtener_datos_perfil_instagram_con_fallback)
+	return await procesar_scraping(
+		data.username,
+		"instagram",
+		obtener_datos_perfil_instagram_con_fallback,
+		habilitar_busqueda_web=data.habilitar_busqueda_web
+	)
+
 
 @router_instagram.post("/seguidores")
 def lanzar_scraping_info_seguidores(data: SeguidoresInput):
-    tarea = scrape_followers_info_task.delay(data.username, data.max_seguidores)
-    logger.info(f"📥 Tarea Celery lanzada: scrape_followers_info para {data.username} (máx {data.max_seguidores})")
-    return {"mensaje": "Scraping completo de seguidores en curso", "tarea_id": tarea.id}
+	tarea = scrape_followers_info_task.delay(data.username, data.max_seguidores)
+	logger.info(f"📥 Tarea Celery lanzada: scrape_followers_info para {data.username} (máx {data.max_seguidores})")
+	return {"mensaje": "Scraping completo de seguidores en curso", "tarea_id": tarea.id}
+
 
 @router_instagram.post("/seguidos")
 def lanzar_scraping_info_seguidos(data: SeguidosInput):
-    tarea = scrape_followees_info_task.delay(data.username, data.max_seguidos)
-    logger.info(f"📥 Tarea Celery lanzada: scrape_followees_info para {data.username} (máx {data.max_seguidos})")
-    return {"mensaje": "Scraping completo de seguidos en curso", "tarea_id": tarea.id}
+	tarea = scrape_followees_info_task.delay(data.username, data.max_seguidos)
+	logger.info(f"📥 Tarea Celery lanzada: scrape_followees_info para {data.username} (máx {data.max_seguidos})")
+	return {"mensaje": "Scraping completo de seguidos en curso", "tarea_id": tarea.id}

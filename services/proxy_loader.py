@@ -13,7 +13,8 @@ def convertir_txt_a_json(txt_path="services/raw_proxies.txt", json_path="service
                     "ip": ip,
                     "port": port,
                     "username": user,
-                    "password": password
+                    "password": password,
+                    "plataformas_bloqueadas": []
                 })
             else:
                 logger.warning(f"[ProxyLoader] Formato inválido en línea: {line.strip()}")

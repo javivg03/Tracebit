@@ -1,15 +1,12 @@
 from urllib.parse import quote_plus
-from bs4 import BeautifulSoup
 from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
-from services.proxy_pool import ProxyPool
-from services.proxy_format import formatear_proxy_playwright
 from utils.validator import extraer_emails, extraer_telefonos
 from utils.normalizador import normalizar_datos_scraper
 from utils.busqueda_cruzada import buscar_contacto
 import traceback
 
-def obtener_datos_perfil_facebook(username_o_nombre: str, forzar_solo_bio: bool = False) -> dict:
+def obtener_datos_perfil_facebook(username_o_nombre: str, forzar_solo_bio: bool = False, habilitar_busqueda_web: bool = False) -> dict:
     logger.info(f"✨ Iniciando scraping de Facebook para: {username_o_nombre}")
 
     es_nombre_real = " " in username_o_nombre.strip()
@@ -27,9 +24,11 @@ def obtener_datos_perfil_facebook(username_o_nombre: str, forzar_solo_bio: bool 
 
     while intentos < intentos_max:
         try:
-            playwright, browser, context, proxy = iniciar_browser_con_proxy()
+            playwright, browser, context, proxy = iniciar_browser_con_proxy("state_facebook.json")
             page = context.new_page()
             logger.info(f"🧩 Usando proxy: {proxy['ip']}:{proxy['port']}")
+
+            hubo_bloqueo = False
 
             for url in urls:
                 try:
@@ -37,12 +36,32 @@ def obtener_datos_perfil_facebook(username_o_nombre: str, forzar_solo_bio: bool 
                     page.goto(url, timeout=15000)
                     page.wait_for_timeout(3000)
 
-                    html = page.content()
-                    soup = BeautifulSoup(html, "html.parser")
-                    text = soup.get_text(separator=" ", strip=True)
+                    # Bloqueo: login forzado
+                    title = page.title()
+                    if "Inicia sesión" in title or "Facebook" == title.strip():
+                        logger.warning("⚠️ Página requiere login o el proxy ha sido bloqueado.")
+                        hubo_bloqueo = True
+                        break
 
-                    emails = extraer_emails(text)
-                    telefonos = extraer_telefonos(text)
+                    # NUEVO: Buscar emails en spans del DOM
+                    spans = page.locator("span").all()
+                    texto_spans = []
+                    emails = []
+                    telefonos = []
+
+                    for span in spans:
+                        try:
+                            texto = span.inner_text().strip()
+                            if texto:
+                                texto_spans.append(texto)
+                                encontrados = extraer_emails(texto)
+                                if encontrados:
+                                    emails.extend(encontrados)
+                        except:
+                            continue
+
+                    texto_completo = " ".join(texto_spans)
+                    telefonos = extraer_telefonos(texto_completo)
 
                     if emails:
                         email_valido = emails[0]
@@ -59,13 +78,12 @@ def obtener_datos_perfil_facebook(username_o_nombre: str, forzar_solo_bio: bool 
                             hashtags=[],
                             origen="facebook"
                         )
-                        break  # Si encontramos datos útiles, salimos del bucle
+                        break
 
                 except Exception as e:
                     logger.warning(f"⚠️ Error procesando {url}: {e}")
                     continue
 
-            # Cerramos navegador siempre
             try:
                 page.close()
                 context.close()
@@ -74,11 +92,16 @@ def obtener_datos_perfil_facebook(username_o_nombre: str, forzar_solo_bio: bool 
             except Exception as e:
                 logger.warning(f"⚠️ Error al cerrar navegador: {e}")
 
+            if hubo_bloqueo:
+                logger.warning("🚫 Proxy bloqueado o página inaccesible. Probando con otro proxy...")
+                intentos += 1
+                continue
+
             if resultado:
-                if not resultado.get("email") and not resultado.get("telefono"):
-                    logger.warning("❌ Perfil sin datos útiles, descartando...")
-                    return {"error": "Perfil sin datos útiles"}
                 return resultado
+            else:
+                logger.info("🔍 Página cargada correctamente, pero no se encontraron datos útiles.")
+                break
 
         except Exception as e:
             logger.warning(f"❌ Error al iniciar navegador con proxy – {e}")
@@ -86,8 +109,11 @@ def obtener_datos_perfil_facebook(username_o_nombre: str, forzar_solo_bio: bool 
             intentos += 1
             continue
 
-    # 🔍 Si no se encuentra nada, ejecutamos búsqueda cruzada
-    logger.warning(f"⚠️ No se encontraron datos en scraping. Lanzando búsqueda cruzada...")
+    if not habilitar_busqueda_web:
+        logger.info("⛔ Búsqueda cruzada desactivada por configuración del usuario.")
+        return normalizar_datos_scraper(None, username_o_nombre, None, None, None, None, None, [], "sin_email")
+
+    logger.warning("⚠️ No se encontraron datos en scraping. Lanzando búsqueda cruzada...")
     resultado_cruzado = buscar_contacto(
         username=username_o_nombre,
         nombre_completo=username_o_nombre,

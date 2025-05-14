@@ -29,6 +29,7 @@ def obtener_seguidos(username: str, max_seguidos: int = 3):
         max_intentos = 12
 
         while len(seguidos) < max_seguidos and intentos_sin_nuevos < max_intentos:
+            # Scroll
             page.evaluate('''() => {
                 const ul = document.querySelector('div[role="dialog"] ul');
                 if (ul && ul.parentElement) {
@@ -37,6 +38,7 @@ def obtener_seguidos(username: str, max_seguidos: int = 3):
             }''')
             page.wait_for_timeout(1500)
 
+            # Extraer items actuales
             items = page.evaluate('''() => {
                 const lista = [];
                 const links = document.querySelectorAll('div[role="dialog"] a[href^="/"]');
@@ -51,10 +53,15 @@ def obtener_seguidos(username: str, max_seguidos: int = 3):
 
             nuevos = 0
             for user in items:
-                if user not in seguidos and len(seguidos) < max_seguidos:
+                if user not in seguidos:
                     seguidos.append(user)
                     nuevos += 1
                     logger.info(f"👤 Seguido #{len(seguidos)}: {user}")
+                    if len(seguidos) >= max_seguidos:
+                        break  # ✅ Salir del for si se llega al límite
+
+            if len(seguidos) >= max_seguidos:
+                break  # ✅ Salir del while también
 
             if nuevos == 0:
                 intentos_sin_nuevos += 1

@@ -14,9 +14,11 @@ def check_proxy_requests(proxy: dict, timeout: int = 5) -> bool:
             proxies={"http": proxy_url, "https": proxy_url},
             timeout=timeout
         )
-        if response.status_code == 200:
+        if response.status_code == 200 and "origin" in response.text:
             logger.info(f"[✅ Requests] Proxy válido: {proxy_url}")
             return True
+        else:
+            logger.warning(f"[⚠️ Requests] Respuesta inesperada desde httpbin con proxy: {proxy_url}")
     except requests.RequestException as e:
         logger.warning(f"[⚠️ Requests] Fallo con proxy {proxy_url}: {e}")
     return False
@@ -29,12 +31,17 @@ def check_proxy_playwright(proxy: dict, timeout: int = 8000) -> bool:
             context = browser.new_context()
             page = context.new_page()
             page.goto("http://httpbin.org/ip", timeout=timeout)
-            logger.info(f"[✅ Playwright] Proxy válido en httpbin: {proxy_config['server']}")
+            content = page.text_content("body") or ""
+            if "origin" in content:
+                logger.info(f"[✅ Playwright] Proxy válido en httpbin: {proxy_config['server']}")
+                browser.close()
+                return True
+            else:
+                logger.warning(f"[⚠️ Playwright] Respuesta inesperada desde httpbin con proxy: {proxy_config['server']}")
             browser.close()
-            return True
     except Exception as e:
         logger.error(f"[❌ Playwright] Fallo con proxy {proxy_config['server']}: {e}")
-        return False
+    return False
 
 def check_proxy(proxy: dict) -> bool:
     """
