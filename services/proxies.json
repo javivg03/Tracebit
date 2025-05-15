@@ -5,7 +5,9 @@
         "username": "2VHO9hoyujFS5JNv",
         "password": "oNP4FHGgOpIF8Nzc_country-es_session-qF55NHKI_lifetime-10m",
         "plataformas_bloqueadas": [
-            "duckduckgo"
+            "duckduckgo",
+            "instagram",
+            "facebook"
         ]
     },
     {

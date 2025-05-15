@@ -12,6 +12,7 @@ router_tiktok = APIRouter(prefix="/tiktok")
 # ========== Pydantic Models ==========
 class UserInput(BaseModel):
     username: str
+    habilitar_busqueda_web: bool = False
 
 class SeguidoresRequest(BaseModel):
     max_seguidores: int = 10
@@ -22,7 +23,13 @@ class SeguidosRequest(BaseModel):
 # ========== Endpoints ==========
 @router_tiktok.post("/perfil")
 async def tiktok_scraper(data: UserInput = Body(...)):
-    return await procesar_scraping(data.username, "tiktok", obtener_datos_perfil_tiktok)
+    return await procesar_scraping(
+        data.username,
+        "tiktok",
+        obtener_datos_perfil_tiktok,
+        habilitar_busqueda_web=data.habilitar_busqueda_web
+    )
+
 
 @router_tiktok.post("/seguidores")
 def lanzar_scraping_info_seguidores_tiktok(data: UserInput = Body(...), req: SeguidoresRequest = Body(...)):
