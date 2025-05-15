@@ -33,3 +33,4 @@ exports/*
 # Archivos de sesión
 state_tiktok.json
 state_instagram.json
+state_facebook.json
