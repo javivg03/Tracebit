@@ -9,7 +9,6 @@ from services.user_agents import random_user_agent
 from urllib.parse import quote_plus
 
 async def obtener_datos_perfil_facebook(username: str, habilitar_busqueda_web: bool = False) -> dict:
-    logger.info(f"🚀 Iniciando scraping de perfil de Facebook para: {username}")
     pool = ProxyPool()
     proxy = pool.get_random_proxy()
 
@@ -94,7 +93,7 @@ async def obtener_datos_perfil_facebook(username: str, habilitar_busqueda_web: b
         logger.info("⛔ Búsqueda cruzada desactivada por configuración del usuario.")
         return normalizar_datos_scraper(None, username, None, None, None, None, None, [], "sin_email")
 
-    resultado_cruzado = buscar_contacto(
+    resultado_cruzado = await buscar_contacto(
         username=username,
         nombre_completo=username,
         origen_actual="facebook",

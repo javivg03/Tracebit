@@ -7,6 +7,7 @@ fct_scraper_backend/
 ├── requirements.txt
 ├── state_instagram.json  # datos de inicio de sesión de Instagram
 ├── state_tiktok.json
+├── state_facebook.json
 ├── test_*.py             # (todos los archivos de prueba)
 ├── workspace.txt
 

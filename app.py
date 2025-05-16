@@ -36,6 +36,3 @@ app.include_router(router_facebook)
 app.include_router(router_web)
 app.include_router(router_resultados)
 
-# ⚠️ Cuando tengas Facebook
-
-

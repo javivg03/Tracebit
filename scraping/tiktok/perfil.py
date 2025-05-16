@@ -8,8 +8,6 @@ from utils.normalizador import normalizar_datos_scraper
 from services.user_agents import random_user_agent
 
 async def obtener_datos_perfil_tiktok(username: str, forzar_solo_bio: bool = False, habilitar_busqueda_web: bool = False) -> dict:
-    logger.info(f"🚀 Iniciando scraping de perfil de TikTok para: {username}")
-
     urls = [
         f"https://www.tiktok.com/@{username}",
         f"https://www.tiktok.com/search?q={quote_plus(username)}"
@@ -82,7 +80,7 @@ async def obtener_datos_perfil_tiktok(username: str, forzar_solo_bio: bool = Fal
 
     nombre_extraido = resultado.get("nombre") if resultado else username
 
-    resultado_cruzado = buscar_contacto(
+    resultado_cruzado = await buscar_contacto(
         username=username,
         nombre_completo=nombre_extraido,
         origen_actual="tiktok",

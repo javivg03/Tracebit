@@ -41,12 +41,12 @@ async def instagram_scraper(data: InstagramPerfilInput):
 @router_instagram.post("/seguidores")
 def lanzar_scraping_info_seguidores(data: SeguidoresInput):
 	tarea = scrape_followers_info_task.delay(data.username, data.max_seguidores)
-	logger.info(f"📥 Tarea Celery lanzada: scrape_followers_info para {data.username} (máx {data.max_seguidores})")
+	logger.info(f"📨 Petición recibida para scrapear seguidores de {data.username}")
 	return {"mensaje": "Scraping completo de seguidores en curso", "tarea_id": tarea.id}
 
 
 @router_instagram.post("/seguidos")
 def lanzar_scraping_info_seguidos(data: SeguidosInput):
 	tarea = scrape_followees_info_task.delay(data.username, data.max_seguidos)
-	logger.info(f"📥 Tarea Celery lanzada: scrape_followees_info para {data.username} (máx {data.max_seguidos})")
+	logger.info(f"📨 Petición recibida para scrapear seguidos de {data.username}")
 	return {"mensaje": "Scraping completo de seguidos en curso", "tarea_id": tarea.id}
