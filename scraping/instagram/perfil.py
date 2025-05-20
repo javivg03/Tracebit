@@ -1,7 +1,7 @@
 from playwright.async_api import TimeoutError as PlaywrightTimeout
-from utils.validator import extraer_emails, extraer_telefonos
+from utils.validator import extraer_emails_validos, extraer_telefonos, extraer_dominios
 from utils.normalizador import normalizar_datos_scraper
-from utils.busqueda_cruzada import buscar_contacto
+from utils.busqueda_cruzada import buscar_contacto, buscar_contacto_por_dominio
 from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
 from services.user_agents import random_user_agent
@@ -41,7 +41,7 @@ async def obtener_datos_perfil_instagram(username: str, forzar_solo_bio: bool = 
             bio = await page.locator('meta[property="og:description"]').get_attribute("content") or ""
 
         hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
-        emails = extraer_emails(bio)
+        emails = extraer_emails_validos(bio)
         email = emails[0] if emails else None
         fuente_email = "bio" if email else None
         telefonos = extraer_telefonos(bio)
@@ -57,10 +57,25 @@ async def obtener_datos_perfil_instagram(username: str, forzar_solo_bio: bool = 
                 telefono, None, None, hashtags, origen
             )
 
+        # Scraping dirigido a dominios si no hay email/teléfono
+        dominios = extraer_dominios(bio)
+        for dominio in dominios:
+            datos_dominio = await buscar_contacto_por_dominio(dominio)
+            if datos_dominio:
+                return normalizar_datos_scraper(
+                    nombre, username,
+                    datos_dominio.get("email"),
+                    datos_dominio.get("url_fuente"),
+                    datos_dominio.get("telefono"),
+                    None, None,
+                    hashtags,
+                    "scraping_dominio"
+                )
+
     except Exception as e:
         logger.error(f"❌ Error general en scraping de Instagram: {e}")
 
-    # 🔁 Búsqueda cruzada si no hay email ni teléfono
+    # 🔁 Búsqueda cruzada si está habilitada
     logger.warning("⚠️ No se encontró información útil. Evaluando búsqueda cruzada...")
 
     if not habilitar_busqueda_web:

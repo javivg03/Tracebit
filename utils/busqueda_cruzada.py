@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from utils.validator import extraer_emails, extraer_telefonos
+from utils.validator import extraer_emails_validos, extraer_telefonos
 from services.logging_config import logger
 from services.playwright_tools import iniciar_browser_con_proxy
 
@@ -10,7 +10,7 @@ async def analizar_url_contacto_playwright(page, url: str, origen: str = "startp
         html = await page.content()
         soup = BeautifulSoup(html, "html.parser")
         texto = soup.get_text(separator=" ", strip=True)
-        emails = extraer_emails(texto)
+        emails = extraer_emails_validos(texto)
         telefonos = extraer_telefonos(texto)
 
         if emails or telefonos:
@@ -105,4 +105,42 @@ async def buscar_contacto(username: str, nombre_completo: str = None, origen_act
                 pass
 
     logger.warning("🚫 Todos los intentos fallaron para StartPage y Bing con Playwright.")
+    return None
+
+async def buscar_contacto_por_dominio(dominio: str) -> dict | None:
+    url = dominio if dominio.startswith("http") else f"https://{dominio}"
+    logger.info(f"🌐 Intentando extraer contacto desde dominio detectado: {url}")
+
+    try:
+        playwright, browser, context, proxy = await iniciar_browser_con_proxy()
+        if not context or not browser or not playwright:
+            logger.warning("⚠️ No se pudo iniciar el navegador con proxy.")
+            return None
+
+        page = await context.new_page()
+        await page.goto(url, timeout=15000)
+        await page.wait_for_timeout(2000)
+
+        html = await page.content()
+        soup = BeautifulSoup(html, "html.parser")
+        texto = soup.get_text(separator=" ", strip=True)
+
+        emails = extraer_emails_validos(texto)
+        telefonos = extraer_telefonos(texto)
+
+        await browser.close()
+        await playwright.stop()
+
+        if emails or telefonos:
+            return {
+                "email": emails[0] if emails else None,
+                "telefono": telefonos[0] if telefonos else None,
+                "url_fuente": url,
+                "origen": "dominio_detectado",
+                "nombre": None
+            }
+
+    except Exception as e:
+        logger.warning(f"❌ Error accediendo al dominio {url}: {e}")
+
     return None
