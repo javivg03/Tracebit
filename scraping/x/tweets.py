@@ -3,10 +3,10 @@ from utils.validator import extraer_emails, extraer_telefonos
 from services.logging_config import logger
 from utils.normalizador import normalizar_datos_scraper
 
-
 async def obtener_tweets_x(username: str, max_tweets: int = 10):
     logger.info(f"✨ Iniciando scraping de tweets para: {username}")
     tweets_relevantes = []
+    browser = None
 
     try:
         async with async_playwright() as p:
@@ -27,23 +27,23 @@ async def obtener_tweets_x(username: str, max_tweets: int = 10):
                 elementos = await page.query_selector_all('article div[lang]')
                 for el in elementos:
                     texto = await el.inner_text()
-                    if any([texto not in t for t in tweets_relevantes]):
-                        # Verificar si hay datos relevantes
+                    if texto not in tweets_relevantes:
                         if extraer_emails(texto) or extraer_telefonos(texto):
                             tweets_relevantes.append(texto)
+                            logger.info(f"📌 Tweet relevante: {texto[:80]}...")
 
                     if len(tweets_relevantes) >= max_tweets:
                         break
                 if len(tweets_relevantes) >= max_tweets:
                     break
 
-            await browser.close()
-
     except Exception as e:
         logger.error(f"❌ Error general durante scraping de tweets: {e}")
+    finally:
+        if browser:
+            await browser.close()
 
     return tweets_relevantes
-
 
 async def scrape_tweets_info_x(username: str, max_tweets: int = 10):
     logger.info(f"🔍 Scrapeando tweets de X para: {username}")
@@ -59,16 +59,17 @@ async def scrape_tweets_info_x(username: str, max_tweets: int = 10):
         telefonos = extraer_telefonos(tweet)
         email = emails[0] if emails else None
         telefono = telefonos[0] if telefonos else None
+        hashtags = [palabra.strip("#") for palabra in tweet.split() if palabra.startswith("#")]
 
         resultado = normalizar_datos_scraper(
-            nombre=None,
+            nombre=username,
             usuario=username,
             email=email,
             fuente_email=f"https://twitter.com/{username}",
             telefono=telefono,
             seguidores=None,
             seguidos=None,
-            hashtags=[],
+            hashtags=hashtags,
             origen="tweet"
         )
         resultado["tweet"] = tweet

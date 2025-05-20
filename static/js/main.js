@@ -181,7 +181,7 @@ function mostrarOpciones() {
   const tipo = document.getElementById("tipo").value;
   const plataforma = document.getElementById("plataforma").value;
 
-  const mostrarCheckbox = tipo === "perfil" && plataforma !== "web";
+  const mostrarCheckbox = (tipo === "perfil" || tipo === "canal") && plataforma !== "web";
   document.getElementById("opcion-busqueda-cruzada").style.display = mostrarCheckbox ? "block" : "none";
 }
 

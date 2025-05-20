@@ -1,12 +1,11 @@
+import requests
+from bs4 import BeautifulSoup
 from utils.validator import extraer_emails, extraer_telefonos
 from utils.normalizador import normalizar_datos_scraper
 from utils.busqueda_cruzada import buscar_contacto
 from services.logging_config import logger
 
-import requests
-from bs4 import BeautifulSoup
-
-def obtener_datos_canal_telegram(username: str) -> dict:
+async def obtener_datos_canal_telegram(username: str, habilitar_busqueda_web: bool = False) -> dict:
     logger.info(f"✨ Iniciando scraping de canal Telegram: {username}")
 
     url = f"https://t.me/s/{username}"
@@ -19,15 +18,12 @@ def obtener_datos_canal_telegram(username: str) -> dict:
             raise Exception(f"Status code {res.status_code}")
 
         soup = BeautifulSoup(res.text, "html.parser")
-
-        # 🌐 Datos generales
         title = soup.select_one(".tgme_channel_info_header_title")
         description = soup.select_one(".tgme_channel_info_description")
         subs = soup.select_one(".tgme_channel_info_counter")
 
         raw_text = soup.get_text(separator=" ", strip=True)
 
-        # 📩 Email y ☎️ Teléfono
         emails = extraer_emails(raw_text)
         email = emails[0] if emails else None
         fuente_email = "canal" if email else None
@@ -54,7 +50,7 @@ def obtener_datos_canal_telegram(username: str) -> dict:
             origen=origen
         )
 
-        if datos.get("email") or datos.get("telefono"):
+        if email or telefono:
             return datos
 
         logger.warning("⚠️ Canal sin email ni teléfono. Lanzando búsqueda cruzada...")
@@ -62,11 +58,15 @@ def obtener_datos_canal_telegram(username: str) -> dict:
     except Exception as e:
         logger.error(f"❌ Error al scrapear el canal: {e}")
 
-    # 🔍 Si falló scraping o no hay datos → búsqueda cruzada (solo en plataformas externas)
-    resultado = buscar_contacto(
+    if not habilitar_busqueda_web:
+        logger.info("⛔ Búsqueda cruzada desactivada.")
+        return normalizar_datos_scraper(None, username, None, None, None, None, None, [], "sin_email")
+
+    resultado = await buscar_contacto(
         username=username,
         nombre_completo=username,
-        origen_actual="telegram"
+        origen_actual="telegram",
+        habilitar_busqueda_web=True
     )
 
     if resultado:
@@ -83,14 +83,4 @@ def obtener_datos_canal_telegram(username: str) -> dict:
         )
 
     logger.warning(f"❌ No se encontró ningún dato útil para {username} tras scraping + búsqueda cruzada.")
-    return normalizar_datos_scraper(
-        nombre=None,
-        usuario=username,
-        email=None,
-        fuente_email=None,
-        telefono=None,
-        seguidores=None,
-        seguidos=None,
-        hashtags=[],
-        origen="error"
-    )
+    return normalizar_datos_scraper(None, username, None, None, None, None, None, [], "sin_resultado")

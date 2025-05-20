@@ -1,45 +1,41 @@
-from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback
+import asyncio
+from playwright.async_api import TimeoutError as PlaywrightTimeout
+from scraping.instagram.perfil import obtener_datos_perfil_instagram
 from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
-import concurrent.futures
-from playwright.sync_api import TimeoutError
 
 
-def obtener_seguidores(username: str, max_seguidores: int = 3):
-	seguidores = []
-	logger.info(f"🚀 Iniciando extracción de seguidores para: {username}")
+async def obtener_seguidores(username: str, max_seguidores: int = 3) -> list:
+    seguidores = []
+    logger.info(f"🚀 Iniciando extracción de seguidores para: {username}")
 
-	try:
-		playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
-		logger.info(f"🧩 Proxy usado para seguidores: {proxy}")
-		page = context.new_page()
+    try:
+        playwright, browser, context, proxy = await iniciar_browser_con_proxy("state_instagram.json")
+        logger.info(f"🧩 Proxy usado para seguidores: {proxy}")
+        page = await context.new_page()
 
-		logger.info("🌐 Accediendo al perfil...")
-		page.goto(f"https://www.instagram.com/{username}/", timeout=60000)
-		page.wait_for_timeout(3000)
-		logger.info("✅ Perfil cargado")
+        logger.info("🌐 Accediendo al perfil...")
+        await page.goto(f"https://www.instagram.com/{username}/", timeout=60000)
+        await page.wait_for_timeout(3000)
 
-		logger.info("🕭 Buscando botón de seguidores...")
-		page.click('a[href$="/followers/"]', timeout=10000)
-		logger.info("✅ Clic en botón de seguidores")
-		page.wait_for_timeout(6000)
+        logger.info("🕭 Buscando botón de seguidores...")
+        await page.click('a[href$="/followers/"]', timeout=10000)
+        await page.wait_for_timeout(6000)
 
-		logger.info("🔄 Comenzando scroll + extracción sin esperar a visibilidad...")
-		intentos_sin_nuevos = 0
-		max_intentos = 12
+        logger.info("🔄 Comenzando scroll y extracción de seguidores...")
+        intentos_sin_nuevos = 0
+        max_intentos = 12
 
-		while len(seguidores) < max_seguidores and intentos_sin_nuevos < max_intentos:
-			# Scroll
-			page.evaluate('''() => {
+        while len(seguidores) < max_seguidores and intentos_sin_nuevos < max_intentos:
+            await page.evaluate('''() => {
                 const ul = document.querySelector('div[role="dialog"] ul');
                 if (ul && ul.parentElement) {
                     ul.parentElement.scrollTop = ul.parentElement.scrollHeight;
                 }
             }''')
-			page.wait_for_timeout(1500)
+            await page.wait_for_timeout(1500)
 
-			# Extraer items actuales
-			items = page.evaluate('''() => {
+            items = await page.evaluate('''() => {
                 const lista = [];
                 const links = document.querySelectorAll('div[role="dialog"] a[href^="/"]');
                 for (const link of links) {
@@ -51,64 +47,60 @@ def obtener_seguidores(username: str, max_seguidores: int = 3):
                 return lista;
             }''')
 
-			nuevos = 0
-			for user in items:
-				if user not in seguidores:
-					seguidores.append(user)
-					nuevos += 1
-					logger.info(f"👤 Seguidor #{len(seguidores)}: {user}")
-					if len(seguidores) >= max_seguidores:
-						break  # ✅ Salimos del for si ya alcanzamos el límite
+            nuevos = 0
+            for user in items:
+                if user not in seguidores:
+                    seguidores.append(user)
+                    nuevos += 1
+                    logger.info(f"👤 Seguidor #{len(seguidores)}: {user}")
+                    if len(seguidores) >= max_seguidores:
+                        break
 
-			if len(seguidores) >= max_seguidores:
-				break  # ✅ También salimos del while por si acaso
+            if nuevos == 0:
+                intentos_sin_nuevos += 1
+                logger.warning(f"⚠️ Sin nuevos seguidores. Intento {intentos_sin_nuevos}/{max_intentos}")
+            else:
+                intentos_sin_nuevos = 0
 
-			if nuevos == 0:
-				intentos_sin_nuevos += 1
-				logger.warning(f"⚠️ Sin nuevos seguidores. Intento {intentos_sin_nuevos}/{max_intentos}")
-			else:
-				intentos_sin_nuevos = 0
+        logger.info(f"✅ Total de seguidores extraídos: {len(seguidores)}")
 
-		logger.info(f"✅ Total de seguidores extraídos: {len(seguidores)}")
+    except PlaywrightTimeout as e:
+        logger.error(f"❌ Timeout durante el scraping: {e}")
+    except Exception as e:
+        logger.error(f"❌ Error inesperado durante el scraping: {e}")
+    finally:
+        logger.info("🪩 Cerrando navegador...")
+        try:
+            await browser.close()
+            await playwright.stop()
+        except Exception:
+            pass
 
-	except TimeoutError as e:
-		logger.error(f"❌ Timeout al interactuar con la página: {e}")
-	except Exception as e:
-		logger.error(f"❌ Error inesperado durante el scraping: {e}")
-	finally:
-		logger.info("🪩 Cerrando navegador...")
-		try:
-			browser.close()
-			playwright.stop()
-		except Exception:
-			pass
-
-	return seguidores
+    return seguidores
 
 
-def scrape_followers_info(username: str, max_seguidores: int = 3, timeout_por_seguidor: int = 30):
-	logger.info(f"🚀 Scraping de seguidores para: {username}")
-	todos_los_datos = []
+async def scrape_followers_info(username: str, max_seguidores: int = 3, timeout_por_seguidor: int = 30):
+    logger.info(f"🚀 Scraping de seguidores para: {username}")
+    resultados = []
 
-	seguidores = obtener_seguidores(username, max_seguidores=max_seguidores)
+    seguidores = await obtener_seguidores(username, max_seguidores)
+    if not seguidores:
+        logger.warning("⚠️ No se encontraron seguidores.")
+        return []
 
-	if not seguidores:
-		logger.warning("⚠️ No se encontraron seguidores.")
-		return []
+    for i, seguidor in enumerate(seguidores):
+        logger.info(f"🔍 ({i+1}/{len(seguidores)}) Procesando seguidor: {seguidor}")
+        try:
+            datos = await asyncio.wait_for(
+                obtener_datos_perfil_instagram(seguidor),
+                timeout=timeout_por_seguidor
+            )
+            resultados.append(datos)
+            logger.info(f"✅ Datos obtenidos de {seguidor}")
+        except asyncio.TimeoutError:
+            logger.warning(f"⏱ Timeout en {seguidor} tras {timeout_por_seguidor}s")
+        except Exception as e:
+            logger.error(f"❌ Error inesperado con {seguidor}: {e}")
 
-	for i, usuario in enumerate(seguidores):
-		logger.info(f"🔍 ({i + 1}/{len(seguidores)}) Scrapeando seguidor: {usuario}")
-
-		with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-			future = executor.submit(obtener_datos_perfil_instagram_con_fallback, usuario)
-			try:
-				datos = future.result(timeout=timeout_por_seguidor)
-				todos_los_datos.append(datos)
-				logger.info(f"✅ Finalizado scraping de seguidor {usuario}")
-			except concurrent.futures.TimeoutError:
-				logger.warning(f"⚠️ Timeout al scrapear seguidor {usuario} (>{timeout_por_seguidor}s)")
-			except Exception as e:
-				logger.error(f"❌ Error inesperado con {usuario}: {e}")
-
-	logger.info(f"📦 Scraping completado. Seguidores procesados: {len(todos_los_datos)}")
-	return todos_los_datos
+    logger.info(f"📦 Scraping completado. Seguidores procesados: {len(resultados)}")
+    return resultados

@@ -5,7 +5,7 @@ fct_scraper_backend/
 ├── celery_app.py
 ├── docker-compose.yml
 ├── requirements.txt
-├── state_instagram.json  # datos de inicio de sesión de Instagram
+├── state_instagram.json  # datos de inicio de sesión
 ├── state_tiktok.json
 ├── state_facebook.json
 ├── test_*.py             # (todos los archivos de prueba)
@@ -69,8 +69,8 @@ fct_scraper_backend/
 ├── tasks/
 │   ├── __init__.py
 │   ├── celery_worker.py
-│   ├── instagram.py
-│   └── tiktok.py
+│   ├── instagram.py (seguidores/seguidos)
+│   └── tiktok.py (seguidores/seguidos)
 
 ├── services/
 │   ├── proxy_loader.py      # ✅ Convierte raw_proxies.txt → proxies.json
@@ -82,4 +82,4 @@ fct_scraper_backend/
 │   ├── proxies.json         # ✅ Proxies válidos listos para usar (generado)
 │   ├── logging_config.py    # ✅ Define formato y salida de los logs
 │   ├── user_agents.py       # ⚙️ Lista rotativa de user-agents
-│   ├── proxy_scraper.py     # ❌ Inutilizado
+│   ├── proxy_scraper.py     # ❌ Inutilizado --> lo usabamos con los gratuitos pero lo mantenemos por si acaso para un futuro

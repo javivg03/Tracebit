@@ -1,45 +1,41 @@
-from scraping.instagram.perfil import obtener_datos_perfil_instagram_con_fallback
-from playwright.sync_api import TimeoutError
+import asyncio
+from playwright.async_api import TimeoutError as PlaywrightTimeout
+from scraping.instagram.perfil import obtener_datos_perfil_instagram
 from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
-import concurrent.futures
 
 
-def obtener_seguidos(username: str, max_seguidos: int = 3):
+async def obtener_seguidos(username: str, max_seguidos: int = 3) -> list:
     seguidos = []
     logger.info(f"🚀 Iniciando extracción de seguidos para: {username}")
 
     try:
-        playwright, browser, context, proxy = iniciar_browser_con_proxy("state_instagram.json")
-        logger.info(f"🧩 Proxy elegido para seguidos: {proxy}")
-        page = context.new_page()
+        playwright, browser, context, proxy = await iniciar_browser_con_proxy("state_instagram.json")
+        logger.info(f"🧩 Proxy usado para seguidos: {proxy}")
+        page = await context.new_page()
 
         logger.info("🌐 Accediendo al perfil...")
-        page.goto(f"https://www.instagram.com/{username}/", timeout=60000)
-        page.wait_for_timeout(3000)
-        logger.info("✅ Perfil cargado")
+        await page.goto(f"https://www.instagram.com/{username}/", timeout=60000)
+        await page.wait_for_timeout(3000)
 
         logger.info("🧭 Buscando botón de seguidos...")
-        page.click('a[href$="/following/"]', timeout=10000)
-        logger.info("✅ Clic en botón de seguidos")
-        page.wait_for_timeout(6000)
+        await page.click('a[href$="/following/"]', timeout=10000)
+        await page.wait_for_timeout(6000)
 
         logger.info("🔄 Comenzando scroll y extracción de seguidos...")
         intentos_sin_nuevos = 0
         max_intentos = 12
 
         while len(seguidos) < max_seguidos and intentos_sin_nuevos < max_intentos:
-            # Scroll
-            page.evaluate('''() => {
+            await page.evaluate('''() => {
                 const ul = document.querySelector('div[role="dialog"] ul');
                 if (ul && ul.parentElement) {
                     ul.parentElement.scrollTop = ul.parentElement.scrollHeight;
                 }
             }''')
-            page.wait_for_timeout(1500)
+            await page.wait_for_timeout(1500)
 
-            # Extraer items actuales
-            items = page.evaluate('''() => {
+            items = await page.evaluate('''() => {
                 const lista = [];
                 const links = document.querySelectorAll('div[role="dialog"] a[href^="/"]');
                 for (const link of links) {
@@ -58,10 +54,7 @@ def obtener_seguidos(username: str, max_seguidos: int = 3):
                     nuevos += 1
                     logger.info(f"👤 Seguido #{len(seguidos)}: {user}")
                     if len(seguidos) >= max_seguidos:
-                        break  # ✅ Salir del for si se llega al límite
-
-            if len(seguidos) >= max_seguidos:
-                break  # ✅ Salir del while también
+                        break
 
             if nuevos == 0:
                 intentos_sin_nuevos += 1
@@ -71,26 +64,26 @@ def obtener_seguidos(username: str, max_seguidos: int = 3):
 
         logger.info(f"✅ Total de seguidos extraídos: {len(seguidos)}")
 
-    except TimeoutError as e:
-        logger.error(f"❌ Timeout al interactuar con la página: {e}")
+    except PlaywrightTimeout as e:
+        logger.error(f"❌ Timeout durante el scraping: {e}")
     except Exception as e:
-        logger.error(f"❌ Error general durante el scraping de seguidos: {e}")
+        logger.error(f"❌ Error inesperado durante el scraping: {e}")
     finally:
         logger.info("🪩 Cerrando navegador...")
         try:
-            browser.close()
-            playwright.stop()
+            await browser.close()
+            await playwright.stop()
         except Exception:
             pass
 
     return seguidos
 
 
-def scrape_followees_info(username: str, max_seguidos: int = 3, timeout_por_usuario: int = 30):
+async def scrape_followees_info(username: str, max_seguidos: int = 3, timeout_por_usuario: int = 30):
     logger.info(f"🚀 Scraping de seguidos para: {username}")
-    todos_los_datos = []
+    resultados = []
 
-    seguidos = obtener_seguidos(username, max_seguidos=max_seguidos)
+    seguidos = await obtener_seguidos(username, max_seguidos=max_seguidos)
 
     if not seguidos:
         logger.warning("⚠️ No se encontraron seguidos.")
@@ -98,16 +91,17 @@ def scrape_followees_info(username: str, max_seguidos: int = 3, timeout_por_usua
 
     for i, usuario in enumerate(seguidos):
         logger.info(f"🔍 ({i+1}/{len(seguidos)}) Scrapeando seguido: {usuario}")
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(obtener_datos_perfil_instagram_con_fallback, usuario)
-            try:
-                datos = future.result(timeout=timeout_por_usuario)
-                todos_los_datos.append(datos)
-                logger.info(f"✅ Finalizado scraping de seguido {usuario}")
-            except concurrent.futures.TimeoutError:
-                logger.warning(f"⚠️ Timeout al scrapear seguido {usuario} (>{timeout_por_usuario}s)")
-            except Exception as e:
-                logger.error(f"❌ Error al scrapear seguido {usuario}: {e}")
+        try:
+            datos = await asyncio.wait_for(
+                obtener_datos_perfil_instagram(usuario),
+                timeout=timeout_por_usuario
+            )
+            resultados.append(datos)
+            logger.info(f"✅ Finalizado scraping de seguido {usuario}")
+        except asyncio.TimeoutError:
+            logger.warning(f"⚠️ Timeout al scrapear seguido {usuario} (>{timeout_por_usuario}s)")
+        except Exception as e:
+            logger.error(f"❌ Error inesperado con {usuario}: {e}")
 
-    logger.info(f"📦 Scraping completado. Seguidos procesados: {len(todos_los_datos)}")
-    return todos_los_datos
+    logger.info(f"📦 Scraping completado. Seguidos procesados: {len(resultados)}")
+    return resultados
