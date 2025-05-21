@@ -35,7 +35,7 @@ async def buscar_contacto(username: str, nombre_completo: str = None, origen_act
 
     query = f'"{nombre_completo or username}" contacto OR email OR teléfono OR "sitio web"'
     intentos = 0
-    max_intentos = 3
+    max_intentos = 1
 
     while intentos < max_intentos:
         intentos += 1

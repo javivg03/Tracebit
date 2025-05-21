@@ -26,6 +26,7 @@ class SeguidosInput(BaseModel):
 
 @router_instagram.post("/perfil")
 async def instagram_scraper(data: InstagramPerfilInput):
+	logger.info(f"📥 Endpoint recibido: Scraping de perfil Instagram para {data.username}")
 	return await procesar_scraping(
 		data.username,
 		"instagram",

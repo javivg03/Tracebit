@@ -1,13 +1,27 @@
 from playwright.async_api import TimeoutError as PlaywrightTimeout
-from utils.validator import extraer_emails_validos, extraer_telefonos, extraer_dominios
+from utils.validator import (
+    extraer_emails_validos, extraer_telefonos
+)
 from utils.normalizador import normalizar_datos_scraper
-from utils.busqueda_cruzada import buscar_contacto, buscar_contacto_por_dominio
+from utils.busqueda_cruzada import buscar_contacto
 from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
+from services.proxy_pool import ProxyPool
 from services.user_agents import random_user_agent
+from utils.busqueda_username import buscar_perfiles_por_username
 
-async def obtener_datos_perfil_instagram(username: str, forzar_solo_bio: bool = False, habilitar_busqueda_web: bool = False) -> dict:
-    logger.info(f"🚀 Iniciando scraping de perfil de Instagram para: {username}")
+async def obtener_datos_perfil_instagram(
+    username: str,
+    forzar_solo_bio: bool = False,
+    habilitar_busqueda_web: bool = False,
+    redes_visitadas: set[str] = None
+) -> dict:
+    if redes_visitadas is None:
+        redes_visitadas = set()
+    redes_visitadas.add("instagram")
+
+    email = None
+    telefono = None
 
     try:
         user_agent = random_user_agent()
@@ -25,7 +39,6 @@ async def obtener_datos_perfil_instagram(username: str, forzar_solo_bio: bool = 
             await page.wait_for_timeout(3000)
         except PlaywrightTimeout:
             logger.warning("❌ Timeout al cargar el perfil. Proxy marcado como bloqueado.")
-            from services.proxy_pool import ProxyPool
             ProxyPool().reportar_bloqueo(proxy, "instagram")
             await browser.close()
             await playwright.stop()
@@ -45,9 +58,11 @@ async def obtener_datos_perfil_instagram(username: str, forzar_solo_bio: bool = 
         email = emails[0] if emails else None
         fuente_email = "bio" if email else None
         telefonos = extraer_telefonos(bio)
-        telefono = telefonos[0] if telefonos else None
+        telefono = telefonos[0] if telefono else None
         origen = "bio" if email or telefono else "no_email"
 
+        await page.close()
+        await context.close()
         await browser.close()
         await playwright.stop()
 
@@ -57,23 +72,16 @@ async def obtener_datos_perfil_instagram(username: str, forzar_solo_bio: bool = 
                 telefono, None, None, hashtags, origen
             )
 
-        # Scraping dirigido a dominios si no hay email/teléfono
-        dominios = extraer_dominios(bio)
-        for dominio in dominios:
-            datos_dominio = await buscar_contacto_por_dominio(dominio)
-            if datos_dominio:
-                return normalizar_datos_scraper(
-                    nombre, username,
-                    datos_dominio.get("email"),
-                    datos_dominio.get("url_fuente"),
-                    datos_dominio.get("telefono"),
-                    None, None,
-                    hashtags,
-                    "scraping_dominio"
-                )
-
     except Exception as e:
         logger.error(f"❌ Error general en scraping de Instagram: {e}")
+        email = None
+        telefono = None
+
+    if not email and not telefono:
+        logger.info("🔁 No se encontraron datos en Instagram. Buscando en otras redes por username...")
+        resultado_multired = await buscar_perfiles_por_username(username, excluir=["instagram"], redes_visitadas=redes_visitadas)
+        if resultado_multired:
+            return resultado_multired
 
     # 🔁 Búsqueda cruzada si está habilitada
     logger.warning("⚠️ No se encontró información útil. Evaluando búsqueda cruzada...")

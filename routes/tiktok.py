@@ -28,6 +28,7 @@ class SeguidosInput(BaseModel):
 
 @router_tiktok.post("/perfil")
 async def tiktok_scraper(data: PerfilInput):
+    logger.info(f"📥 Endpoint recibido: Scraping de perfil TikTok para {data.username}")
     return await procesar_scraping(
         data.username,
         "tiktok",
