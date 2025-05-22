@@ -1,11 +1,13 @@
 import asyncio
 from playwright.async_api import TimeoutError as PlaywrightTimeout
-from scraping.instagram.perfil import obtener_datos_perfil_instagram
 from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
+from services.proxy_pool import ProxyPool
+from utils.flujo_scraping import flujo_scraping_multired
+import pandas as pd
 
 
-async def obtener_seguidores(username: str, max_seguidores: int = 3) -> list:
+async def obtener_seguidores(username: str, max_seguidores: int = 3) -> list[str]:
     seguidores = []
     logger.info(f"🚀 Iniciando extracción de seguidores para: {username}")
 
@@ -66,6 +68,7 @@ async def obtener_seguidores(username: str, max_seguidores: int = 3) -> list:
 
     except PlaywrightTimeout as e:
         logger.error(f"❌ Timeout durante el scraping: {e}")
+        ProxyPool().reportar_bloqueo(proxy, "instagram")
     except Exception as e:
         logger.error(f"❌ Error inesperado durante el scraping: {e}")
     finally:
@@ -79,7 +82,7 @@ async def obtener_seguidores(username: str, max_seguidores: int = 3) -> list:
     return seguidores
 
 
-async def scrape_followers_info(username: str, max_seguidores: int = 3, timeout_por_seguidor: int = 30):
+async def scrape_followers_info(username: str, max_seguidores: int = 3, timeout_por_seguidor: int = 30) -> list[dict]:
     logger.info(f"🚀 Scraping de seguidores para: {username}")
     resultados = []
 
@@ -92,7 +95,7 @@ async def scrape_followers_info(username: str, max_seguidores: int = 3, timeout_
         logger.info(f"🔍 ({i+1}/{len(seguidores)}) Procesando seguidor: {seguidor}")
         try:
             datos = await asyncio.wait_for(
-                obtener_datos_perfil_instagram(seguidor),
+                flujo_scraping_multired(seguidor, redes=["instagram"], habilitar_busqueda_web=False),
                 timeout=timeout_por_seguidor
             )
             resultados.append(datos)
@@ -103,4 +106,13 @@ async def scrape_followers_info(username: str, max_seguidores: int = 3, timeout_
             logger.error(f"❌ Error inesperado con {seguidor}: {e}")
 
     logger.info(f"📦 Scraping completado. Seguidores procesados: {len(resultados)}")
+
+    # (Opcional) Guardar en Excel aquí directamente si no se hace desde Celery
+    ruta = f"exports/seguidores_{username}.xlsx"
+    try:
+        pd.DataFrame(resultados).to_excel(ruta, index=False)
+        logger.info(f"📁 Archivo exportado: {ruta}")
+    except Exception as e:
+        logger.warning(f"❌ No se pudo exportar el Excel: {e}")
+
     return resultados

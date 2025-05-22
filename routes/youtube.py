@@ -14,5 +14,5 @@ class UserInput(BaseModel):
 # ========== Endpoints ==========
 @router_youtube.post("/canal")
 async def youtube_scraper(data: UserInput = Body(...)):
-    logger.info(f"🚀 Endpoint recibido: Scraping de canal YouTube para {data.username}")
+    logger.info(f"📥 Endpoint recibido: Scraping de perfil X para {data.username}")
     return await procesar_scraping(data.username, "youtube", obtener_datos_perfil_youtube)

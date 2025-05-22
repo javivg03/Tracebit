@@ -93,7 +93,7 @@ async def obtener_datos_perfil_tiktok(
         telefono = None
 
     if not email and not telefono:
-        logger.info("🔁 No se encontraron datos en TikTok. Buscando en otras redes por username...")
+        logger.info("🔁 No se encontraron datos en TikTok")
         resultado_multired = await buscar_perfiles_por_username(username, excluir=["tiktok"], redes_visitadas=redes_visitadas)
         if resultado_multired:
             return resultado_multired
@@ -101,7 +101,6 @@ async def obtener_datos_perfil_tiktok(
     logger.warning("⚠️ Evaluando búsqueda cruzada...")
 
     if not habilitar_busqueda_web:
-        logger.info("⛔ Búsqueda cruzada desactivada por configuración del usuario.")
         return normalizar_datos_scraper(None, username, None, None, None, None, None, [], "sin_email")
 
     resultado_cruzado = await buscar_contacto(

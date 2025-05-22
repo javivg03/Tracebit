@@ -8,8 +8,12 @@ fct_scraper_backend/
 ├── state_instagram.json  # datos de inicio de sesión
 ├── state_tiktok.json
 ├── state_facebook.json
-├── test_*.py             # (todos los archivos de prueba)
+├── state_youtube.json
+├── state_x.json
 ├── workspace.txt
+
+├── tests             # (todos los archivos de prueba)
+│   └──
 
 ├── exports/ #aquí se guardan también los archivos que descargamos
 │   └── exporter.py
@@ -44,6 +48,7 @@ fct_scraper_backend/
 ├── utils/
 │   ├── __init__.py
 │   ├── busqueda_cruzada.py
+│   ├── busqueda_username.py
 │   ├── history.py
 │   ├── normalizador.py
 │   └── validator.py

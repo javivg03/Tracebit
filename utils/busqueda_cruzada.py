@@ -30,7 +30,7 @@ async def buscar_contacto(username: str, nombre_completo: str = None, origen_act
     logger.info(f"🔎 Búsqueda cruzada iniciada para {username} (origen: {origen_actual})")
 
     if not habilitar_busqueda_web:
-        logger.info("⛔ Búsqueda web desactivada por configuración.")
+        logger.info("⛔ Búsqueda web desactivada por por configuración del usuario.")
         return None
 
     query = f'"{nombre_completo or username}" contacto OR email OR teléfono OR "sitio web"'
@@ -107,6 +107,7 @@ async def buscar_contacto(username: str, nombre_completo: str = None, origen_act
     logger.warning("🚫 Todos los intentos fallaron para StartPage y Bing con Playwright.")
     return None
 
+# Sin usar actualmente (ya tenemos mejor búsqueda por username directamente)
 async def buscar_contacto_por_dominio(dominio: str) -> dict | None:
     url = dominio if dominio.startswith("http") else f"https://{dominio}"
     logger.info(f"🌐 Intentando extraer contacto desde dominio detectado: {url}")

@@ -8,7 +8,18 @@ from utils.busqueda_cruzada import buscar_contacto
 from utils.busqueda_username import buscar_perfiles_por_username
 from urllib.parse import quote_plus
 
-async def obtener_datos_perfil_facebook(username: str, habilitar_busqueda_web: bool = False) -> dict:
+async def obtener_datos_perfil_facebook(
+    username: str,
+    habilitar_busqueda_web: bool = False,
+    redes_visitadas: set[str] = None
+) -> dict:
+    if redes_visitadas is None:
+        redes_visitadas = set()
+    redes_visitadas.add("facebook")
+
+    email = None
+    telefono = None
+
     try:
         playwright, browser, context, proxy = await iniciar_browser_con_proxy("state_facebook.json")
 
@@ -56,7 +67,6 @@ async def obtener_datos_perfil_facebook(username: str, habilitar_busqueda_web: b
         email = emails[0] if emails else None
         telefonos = extraer_telefonos(html)
         telefono = telefonos[0] if telefonos else None
-        origen = "html" if email or telefono else "no_email"
 
         await page.close()
         await context.close()
@@ -74,7 +84,7 @@ async def obtener_datos_perfil_facebook(username: str, habilitar_busqueda_web: b
                 seguidores=None,
                 seguidos=None,
                 hashtags=[],
-                origen=origen
+                origen="bio"
             )
 
     except Exception as e:
@@ -84,8 +94,8 @@ async def obtener_datos_perfil_facebook(username: str, habilitar_busqueda_web: b
 
     # 🔁 Buscar en otras redes si no se obtuvo contacto
     if not email and not telefono:
-        logger.info("🔁 No se encontraron datos en Facebook. Buscando en otras redes por username...")
-        resultado_multired = await buscar_perfiles_por_username(username, excluir=["facebook"])
+        logger.info("🔁 No se encontraron datos en Facebook")
+        resultado_multired = await buscar_perfiles_por_username(username, excluir=["facebook"], redes_visitadas=redes_visitadas)
         if resultado_multired:
             return resultado_multired
 
@@ -93,7 +103,6 @@ async def obtener_datos_perfil_facebook(username: str, habilitar_busqueda_web: b
     logger.warning("⚠️ No se encontró información útil. Evaluando búsqueda cruzada...")
 
     if not habilitar_busqueda_web:
-        logger.info("⛔ Búsqueda cruzada desactivada por configuración del usuario.")
         return normalizar_datos_scraper(None, username, None, None, None, None, None, [], "sin_email")
 
     resultado_cruzado = await buscar_contacto(

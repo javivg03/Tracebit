@@ -1,10 +1,8 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-
-from scraping.instagram.perfil import obtener_datos_perfil_instagram
-from tasks.instagram import scrape_followers_info_task, scrape_followees_info_task
 from services.logging_config import logger
-from utils.scraping_handler import procesar_scraping
+from utils.flujo_scraping import flujo_scraping_multired
+from tasks.instagram import scrape_followers_info_task, scrape_followees_info_task
 
 router_instagram = APIRouter(prefix="/instagram")
 
@@ -27,10 +25,9 @@ class SeguidosInput(BaseModel):
 @router_instagram.post("/perfil")
 async def instagram_scraper(data: InstagramPerfilInput):
 	logger.info(f"📥 Endpoint recibido: Scraping de perfil Instagram para {data.username}")
-	return await procesar_scraping(
-		data.username,
-		"instagram",
-		obtener_datos_perfil_instagram,
+	return await flujo_scraping_multired(
+		username=data.username,
+		redes=["instagram", "tiktok", "x", "facebook", "telegram", "youtube"],
 		habilitar_busqueda_web=data.habilitar_busqueda_web
 	)
 

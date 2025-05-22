@@ -9,7 +9,7 @@ with sync_playwright() as p:
     print("➡️ Inicia sesión manualmente y presiona Enter cuando termines...")
     input()
 
-    context.storage_state(path="state_facebook.json")
+    context.storage_state(path="../state_facebook.json")
     print("✅ Sesión guardada en state_facebook.json")
 
     browser.close()

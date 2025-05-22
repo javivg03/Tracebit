@@ -32,6 +32,8 @@ async def buscar_perfiles_por_username(username: str, excluir: list[str] = None,
         ("telegram", obtener_datos_canal_telegram),
     ]
 
+    contacto_encontrado = False
+
     for nombre, scraper in scrapers:
         if nombre in excluir or nombre in redes_visitadas:
             continue
@@ -40,11 +42,16 @@ async def buscar_perfiles_por_username(username: str, excluir: list[str] = None,
         try:
             redes_visitadas.add(nombre)
             resultado = await scraper(username, habilitar_busqueda_web=False, redes_visitadas=redes_visitadas)
+
             if resultado.get("email") or resultado.get("telefono"):
                 logger.info(f"✅ Contacto encontrado en {nombre}")
+                contacto_encontrado = True
                 return resultado
+
         except Exception as e:
             logger.warning(f"⚠️ Error en {nombre} con {username}: {e}")
 
-    logger.info("🔚 No se encontró contacto en redes sociales paralelas.")
+    if not contacto_encontrado:
+        logger.info("🔚 No se encontró contacto en redes sociales paralelas.")
+
     return None

@@ -1,27 +1,19 @@
 from playwright.async_api import TimeoutError as PlaywrightTimeout
-from utils.validator import (
-    extraer_emails_validos, extraer_telefonos
-)
+from utils.validator import extraer_emails_validos, extraer_telefonos
 from utils.normalizador import normalizar_datos_scraper
-from utils.busqueda_cruzada import buscar_contacto
 from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
 from services.proxy_pool import ProxyPool
 from services.user_agents import random_user_agent
-from utils.busqueda_username import buscar_perfiles_por_username
+
 
 async def obtener_datos_perfil_instagram(
     username: str,
-    forzar_solo_bio: bool = False,
-    habilitar_busqueda_web: bool = False,
     redes_visitadas: set[str] = None
-) -> dict:
+) -> dict | None:
     if redes_visitadas is None:
         redes_visitadas = set()
     redes_visitadas.add("instagram")
-
-    email = None
-    telefono = None
 
     try:
         user_agent = random_user_agent()
@@ -29,12 +21,12 @@ async def obtener_datos_perfil_instagram(
 
         if not context:
             logger.warning("⚠️ No se pudo iniciar navegador con proxy para Instagram.")
-            return normalizar_datos_scraper(None, username, None, None, None, None, None, [], "error")
+            return None
 
         page = await context.new_page()
+        logger.info(f"🌐 Visitando perfil: https://www.instagram.com/{username}/")
 
         try:
-            logger.info(f"🌐 Visitando perfil: https://www.instagram.com/{username}/")
             await page.goto(f"https://www.instagram.com/{username}/", timeout=60000)
             await page.wait_for_timeout(3000)
         except PlaywrightTimeout:
@@ -42,9 +34,9 @@ async def obtener_datos_perfil_instagram(
             ProxyPool().reportar_bloqueo(proxy, "instagram")
             await browser.close()
             await playwright.stop()
-            return normalizar_datos_scraper(None, username, None, None, None, None, None, [], "timeout")
+            return None
 
-        logger.info("🔍 Extrayendo datos...")
+        logger.info("🔍 Extrayendo datos del perfil...")
 
         nombre_raw = await page.locator('meta[property="og:title"]').get_attribute("content")
         nombre = nombre_raw.split("(@")[0].strip() if nombre_raw else username
@@ -55,10 +47,11 @@ async def obtener_datos_perfil_instagram(
 
         hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
         emails = extraer_emails_validos(bio)
-        email = emails[0] if emails else None
-        fuente_email = "bio" if email else None
         telefonos = extraer_telefonos(bio)
-        telefono = telefonos[0] if telefono else None
+
+        email = emails[0] if emails else None
+        telefono = telefonos[0] if telefonos else None
+        fuente_email = "bio" if email else None
         origen = "bio" if email or telefono else "no_email"
 
         await page.close()
@@ -74,38 +67,6 @@ async def obtener_datos_perfil_instagram(
 
     except Exception as e:
         logger.error(f"❌ Error general en scraping de Instagram: {e}")
-        email = None
-        telefono = None
 
-    if not email and not telefono:
-        logger.info("🔁 No se encontraron datos en Instagram. Buscando en otras redes por username...")
-        resultado_multired = await buscar_perfiles_por_username(username, excluir=["instagram"], redes_visitadas=redes_visitadas)
-        if resultado_multired:
-            return resultado_multired
-
-    # 🔁 Búsqueda cruzada si está habilitada
-    logger.warning("⚠️ No se encontró información útil. Evaluando búsqueda cruzada...")
-
-    if not habilitar_busqueda_web:
-        logger.info("⛔ Búsqueda cruzada desactivada por configuración del usuario.")
-        return normalizar_datos_scraper(None, username, None, None, None, None, None, [], "sin_email")
-
-    resultado_cruzado = await buscar_contacto(
-        username=username,
-        nombre_completo=nombre if 'nombre' in locals() else username,
-        origen_actual="instagram",
-        habilitar_busqueda_web=True
-    )
-
-    if resultado_cruzado:
-        return normalizar_datos_scraper(
-            resultado_cruzado.get("nombre") or nombre,
-            username,
-            resultado_cruzado.get("email"),
-            resultado_cruzado.get("url_fuente"),
-            resultado_cruzado.get("telefono"),
-            None, None, [],
-            f"búsqueda cruzada ({resultado_cruzado.get('origen')})"
-        )
-
-    return normalizar_datos_scraper(None, username, None, None, None, None, None, [], "sin_resultado")
+    logger.info(f"🔁 No se encontraron datos en Instagram para {username}")
+    return None
