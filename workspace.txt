@@ -47,8 +47,9 @@ fct_scraper_backend/
 
 ├── utils/
 │   ├── __init__.py
+│   ├── flujo_scraping.py
 │   ├── busqueda_cruzada.py
-│   ├── busqueda_username.py
+│   ├── busqueda_username.py # Desactivado
 │   ├── history.py
 │   ├── normalizador.py
 │   └── validator.py
