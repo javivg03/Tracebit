@@ -1,6 +1,6 @@
 from playwright.async_api import TimeoutError as PlaywrightTimeout
 from utils.validator import extraer_emails_validos, extraer_telefonos
-from utils.normalizador import normalizar_datos_scraper
+from utils.normalizador import normalizar_datos_scraper, construir_origen
 from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
 from services.proxy_pool import ProxyPool
@@ -45,14 +45,12 @@ async def obtener_datos_perfil_instagram(
         if not bio:
             bio = await page.locator('meta[property="og:description"]').get_attribute("content") or ""
 
-        hashtags = [tag.strip("#") for tag in bio.split() if tag.startswith("#")]
         emails = extraer_emails_validos(bio)
         telefonos = extraer_telefonos(bio)
 
         email = emails[0] if emails else None
         telefono = telefonos[0] if telefonos else None
-        fuente_email = "bio" if email else None
-        origen = "bio" if email or telefono else "no_email"
+        origen = construir_origen("Instagram", email, telefono)
 
         await page.close()
         await context.close()
@@ -60,9 +58,13 @@ async def obtener_datos_perfil_instagram(
         await playwright.stop()
 
         if email or telefono:
+            logger.info(f"✅ Contacto encontrado en Instagram: {username}")
             return normalizar_datos_scraper(
-                nombre, username, email, fuente_email,
-                telefono, None, None, hashtags, origen
+                nombre=nombre,
+                usuario=username,
+                email=email,
+                telefono=telefono,
+                origen=origen
             )
 
     except Exception as e:

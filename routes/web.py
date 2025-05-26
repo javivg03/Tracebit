@@ -15,14 +15,26 @@ class WebPalabraClaveInput(BaseModel):
     max_resultados: int = 5
 
 # Endpoints
+
 @router_web.post("/perfil")
 async def web_scraper_perfil(data: WebPerfilInput = Body(...)):
-    logger.info(f"📥 Endpoint recibido: Búsqueda web por username para {data.username}")
+    logger.info(f"📥 Endpoint recibido: Búsqueda web por username → {data.username}")
     resultado = buscar_por_nombre(data.username, data.nombre_completo)
-    return {"data": resultado}
+    return {
+        "estado": "ok",
+        "data": resultado,
+        "excel_path": None,
+        "csv_path": None
+    }
+
 
 @router_web.post("/buscar")
 async def web_scraper_busqueda(data: WebPalabraClaveInput = Body(...)):
-    logger.info(f"📥 Endpoint recibido: Búsqueda web por palabra clave para {data.username}")
+    logger.info(f"📥 Endpoint recibido: Búsqueda web por palabra clave → {data.query}")
     resultados = buscar_por_palabra_clave(data.query, data.max_resultados)
-    return {"data": resultados}
+    return {
+        "estado": "ok",
+        "data": resultados,
+        "excel_path": None,
+        "csv_path": None
+    }

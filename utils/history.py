@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime, timedelta
 import os
+import pandas as pd
 
 HISTORY_FILE = "exports/historial.csv"
 
@@ -16,11 +17,19 @@ def guardar_historial(plataforma, username, status):
             username,
             status
         ])
+    generar_historial_excel()
 
-
+def generar_historial_excel():
+    try:
+        if os.path.exists(HISTORY_FILE):
+            df = pd.read_csv(HISTORY_FILE)
+            df.to_excel("exports/historial.xlsx", index=False)
+    except Exception as e:
+        print(f"⚠️ Error generando historial.xlsx: {e}")
 MODO_PRUEBAS = True  # ← Poner en False en producción
 def fue_scrapeado_recentemente(username: str, plataforma: str, tipo: str = "Perfil", ventana_horas: int = 24,
                                requiere_cruzada: bool = False) -> bool:
+
     """
     Devuelve True si ya se ha hecho scraping del mismo usuario/plataforma/tipo en las últimas N horas.
 

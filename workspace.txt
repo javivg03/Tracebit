@@ -16,9 +16,11 @@ fct_scraper_backend/
 │   └──
 
 ├── exports/ #aquí se guardan también los archivos que descargamos
+│   ├── __init__.py
 │   └── exporter.py
 
 ├── scraping/
+│   ├── __init__.py
 │   ├── facebook/
 │   │   ├── __init__.py
 │   │   ├── perfil.py
@@ -79,6 +81,7 @@ fct_scraper_backend/
 │   └── tiktok.py (seguidores/seguidos)
 
 ├── services/
+│   ├── __init__.py
 │   ├── proxy_loader.py      # ✅ Convierte raw_proxies.txt → proxies.json
 │   ├── proxy_checker.py     # ✅ Verifica si un proxy funciona (requests + Playwright)
 │   ├── proxy_pool.py        # ✅ Gestiona el pool: carga, valida, da uno aleatorio, etc.

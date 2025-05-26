@@ -19,7 +19,7 @@ async def telegram_scraper(data: UserInput = Body(...)):
 
     resultado = await flujo_scraping_multired(
         username=data.username,
-        redes=["telegram"],
+        redes=["telegram", "instagram"],
         habilitar_busqueda_web=data.habilitar_busqueda_web
     )
 

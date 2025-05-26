@@ -27,7 +27,7 @@ async def instagram_scraper(data: InstagramPerfilInput):
 	logger.info(f"📥 Endpoint recibido: Scraping de perfil Instagram para {data.username}")
 	return await flujo_scraping_multired(
 		username=data.username,
-		redes=["instagram", "tiktok", "x", "facebook", "telegram", "youtube"],
+		redes=["instagram", "tiktok"],
 		habilitar_busqueda_web=data.habilitar_busqueda_web
 	)
 

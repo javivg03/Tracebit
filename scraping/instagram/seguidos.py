@@ -4,13 +4,10 @@ from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
 from services.proxy_pool import ProxyPool
 from utils.flujo_scraping import flujo_scraping_multired
-import pandas as pd
 
 
 async def obtener_seguidos(username: str, max_seguidos: int = 3) -> list[str]:
     seguidos = []
-    logger.info(f"🚀 Iniciando extracción de seguidos para: {username}")
-
     try:
         playwright, browser, context, proxy = await iniciar_browser_con_proxy("state_instagram.json")
         logger.info(f"🧩 Proxy usado para seguidos: {proxy}")
@@ -83,7 +80,6 @@ async def obtener_seguidos(username: str, max_seguidos: int = 3) -> list[str]:
 
 
 async def scrape_followees_info(username: str, max_seguidos: int = 3, timeout_por_usuario: int = 30) -> list[dict]:
-    logger.info(f"🚀 Scraping de seguidos para: {username}")
     resultados = []
 
     seguidos = await obtener_seguidos(username, max_seguidos=max_seguidos)
@@ -107,13 +103,4 @@ async def scrape_followees_info(username: str, max_seguidos: int = 3, timeout_po
             logger.error(f"❌ Error inesperado con {usuario}: {e}")
 
     logger.info(f"📦 Scraping completado. Seguidos procesados: {len(resultados)}")
-
-    # Exportar a Excel
-    ruta = f"exports/seguidos_{username}.xlsx"
-    try:
-        pd.DataFrame(resultados).to_excel(ruta, index=False)
-        logger.info(f"📁 Archivo exportado: {ruta}")
-    except Exception as e:
-        logger.warning(f"❌ No se pudo exportar el Excel: {e}")
-
     return resultados

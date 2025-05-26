@@ -1,21 +1,26 @@
-from playwright.async_api import async_playwright
-from utils.validator import extraer_emails, extraer_telefonos
+from services.playwright_tools import iniciar_browser_con_proxy
 from services.logging_config import logger
+from services.proxy_pool import ProxyPool
+from playwright.async_api import TimeoutError as PlaywrightTimeout
+from utils.validator import extraer_emails, extraer_telefonos
 from utils.normalizador import normalizar_datos_scraper
+
 
 async def obtener_tweets_x(username: str, max_tweets: int = 10):
     logger.info(f"✨ Iniciando scraping de tweets para: {username}")
     tweets_relevantes = []
-    browser = None
 
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context()
-            page = await context.new_page()
+        playwright, browser, context, proxy = await iniciar_browser_con_proxy("state_x.json")
+        if not context:
+            logger.warning("⚠️ No se pudo iniciar navegador con proxy para X.")
+            return []
 
-            url = f"https://twitter.com/{username}"
-            logger.info(f"🌐 Navegando a: {url}")
+        page = await context.new_page()
+        url = f"https://twitter.com/{username}"
+        logger.info(f"🌐 Navegando a: {url}")
+
+        try:
             await page.goto(url, timeout=60000)
             await page.wait_for_timeout(4000)
 
@@ -37,13 +42,27 @@ async def obtener_tweets_x(username: str, max_tweets: int = 10):
                 if len(tweets_relevantes) >= max_tweets:
                     break
 
-    except Exception as e:
-        logger.error(f"❌ Error general durante scraping de tweets: {e}")
-    finally:
-        if browser:
-            await browser.close()
+        except PlaywrightTimeout:
+            logger.warning("❌ Timeout al cargar perfil de X. Proxy marcado como bloqueado.")
+            ProxyPool().reportar_bloqueo(proxy, "x")
+        except Exception as e:
+            logger.error(f"❌ Error durante scraping de tweets: {e}")
 
+        await page.close()
+        await context.close()
+        await browser.close()
+        await playwright.stop()
+
+    except Exception as e:
+        logger.error(f"❌ Error general durante Playwright: {e}")
+        try:
+            await browser.close()
+        except Exception:
+            pass
+
+    logger.info(f"✅ Total de tweets relevantes encontrados: {len(tweets_relevantes)}")
     return tweets_relevantes
+
 
 async def scrape_tweets_info_x(username: str, max_tweets: int = 10):
     logger.info(f"🔍 Scrapeando tweets de X para: {username}")
@@ -75,4 +94,5 @@ async def scrape_tweets_info_x(username: str, max_tweets: int = 10):
         resultado["tweet"] = tweet
         resultados.append(resultado)
 
+    logger.info(f"📦 Scraping de tweets completado. Total: {len(resultados)}")
     return resultados
