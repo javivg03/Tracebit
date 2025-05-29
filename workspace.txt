@@ -1,32 +1,37 @@
-fct_scraper_backend/
-├── Dockerfile
-├── README.md
-├── app.py
-├── celery_app.py
-├── docker-compose.yml
-├── requirements.txt
-├── state_instagram.json  # datos de inicio de sesión
-├── state_tiktok.json
-├── state_facebook.json
-├── state_youtube.json
-├── state_x.json
-├── workspace.txt
-
-├── tests             # (todos los archivos de prueba)
+📦 fct_scraper_backend/
+│
+├── app.py                    → Punto de entrada principal para la API FastAPI
+├── celery_app.py             → Inicializa Celery y conecta con Redis
+├── docker-compose.yml        → Orquesta servicios: API + Celery + Redis
+├── Dockerfile                → Define la imagen Docker del backend
+├── requirements.txt          → Lista de dependencias del proyecto
+├── README.md                 → Documentación general del sistema
+│
+├── state_instagram.json      → Estado de sesión Playwright para Instagram
+├── state_tiktok.json         → Estado de sesión Playwright para TikTok
+├── state_facebook.json       → Estado de sesión Playwright para Facebook
+├── state_youtube.json        → Estado de sesión Playwright para YouTube
+├── state_x.json              → Estado de sesión Playwright para X (Twitter)
+│
+├── tests/                    → Carpeta de tests (vacía o en desarrollo)
 │   └──
-
-├── exports/ #aquí se guardan también los archivos que descargamos
+│
+├── decorators/               → Decoradores reutilizables
 │   ├── __init__.py
-│   └── exporter.py
-
-├── scraping/
+│   └── historial.py          → Decorador para registrar búsquedas
+│
+├── exports/                  → Generación de archivos CSV/Excel
+│   ├── __init__.py
+│   └── exporter.py           → Lógica para exportar los resultados scrapeados
+│
+├── scraping/                 → Scrapers por plataforma
 │   ├── __init__.py
 │   ├── facebook/
 │   │   ├── __init__.py
-│   │   ├── perfil.py
+│   │   └── perfil.py
 │   ├── telegram/
 │   │   ├── __init__.py
-│   │   ├── canal.py
+│   │   └── canal.py
 │   ├── tiktok/
 │   │   ├── __init__.py
 │   │   ├── perfil.py
@@ -34,29 +39,29 @@ fct_scraper_backend/
 │   │   └── seguidores.py
 │   ├── web/
 │   │   ├── __init__.py
-│   │   └── web_scraper.py
+│   │   └── web_scraper.py    → Scraping de resultados web (StartPage/Bing)
 │   ├── x/
 │   │   ├── __init__.py
-│   │   ├── perfil.py
+│   │   └── perfil.py
 │   ├── youtube/
 │   │   ├── __init__.py
-│   │   ├── canal.py
+│   │   └── canal.py
 │   └── instagram/
 │       ├── __init__.py
 │       ├── perfil.py
 │       ├── seguidores.py
 │       └── seguidos.py
-
-├── utils/
+│
+├── utils/                    → Funciones de apoyo general
 │   ├── __init__.py
-│   ├── flujo_scraping.py
-│   ├── busqueda_cruzada.py
-│   ├── busqueda_username.py # Desactivado
-│   ├── history.py
-│   ├── normalizador.py
-│   └── validator.py
-
-├── routes/
+│   ├── flujo_scraping.py     → Orquesta scraping multired (perfil + fallback)
+│   ├── busqueda_cruzada.py   → Scraping web si no hay resultados directos
+│   ├── busqueda_username.py  → (Desactivado) Scraping de username entre redes
+│   ├── history.py            → Guarda y recupera historial de scraping
+│   ├── normalizador.py       → Limpia y estandariza resultados
+│   └── validator.py          → Validación de emails y teléfonos
+│
+├── routes/                   → Rutas de FastAPI por plataforma
 │   ├── __init__.py
 │   ├── web.py
 │   ├── instagram.py
@@ -65,30 +70,31 @@ fct_scraper_backend/
 │   ├── x.py
 │   ├── tiktok.py
 │   ├── telegram.py
-│   └── resultados.py
-
-├── static/
+│   └── resultados.py         → Devuelve resultado de tareas Celery / controla historial y exportaciones
+│
+├── static/                   → Archivos frontend (interfaz HTML)
 │   ├── css/
-│   │   └── style.css
+│   │   └── style.css         → Estilos personalizados
 │   ├── js/
-│   │   └── main.js
-│   └── index.html
-
-├── tasks/
+│   │   └── main.js           → Toda la lógica del frontend JS (unificada)
+│   └── index.html            → Página web principal
+│
+├── tasks/                    → Tareas Celery para scraping intensivo
 │   ├── __init__.py
-│   ├── celery_worker.py
-│   ├── instagram.py (seguidores/seguidos)
-│   └── tiktok.py (seguidores/seguidos)
-
-├── services/
+│   ├── celery_worker.py      → Arranca el worker de tareas
+│   ├── instagram.py          → Tareas: seguidores / seguidos
+│   ├── tiktok.py             → Tareas: seguidores / seguidos
+│   └── x.py             → Tareas: tweets
+│
+├── services/                 → Infraestructura: proxies, navegador, logs
 │   ├── __init__.py
-│   ├── proxy_loader.py      # ✅ Convierte raw_proxies.txt → proxies.json
-│   ├── proxy_checker.py     # ✅ Verifica si un proxy funciona (requests + Playwright)
-│   ├── proxy_pool.py        # ✅ Gestiona el pool: carga, valida, da uno aleatorio, etc.
-│   ├── proxy_format.py      # ✅ Formatea el proxy para requests o Playwright
-│   ├── playwright_tools.py  # ⚙️ Usa proxies válidos con Playwright para scrapear
-│   ├── raw_proxies.txt      # ✍️ Proxies en formato plano (copiados de IPRoyal)
-│   ├── proxies.json         # ✅ Proxies válidos listos para usar (generado)
-│   ├── logging_config.py    # ✅ Define formato y salida de los logs
-│   ├── user_agents.py       # ⚙️ Lista rotativa de user-agents
-│   ├── proxy_scraper.py     # ❌ Inutilizado --> lo usabamos con los gratuitos pero lo mantenemos por si acaso para un futuro
+│   ├── proxy_loader.py       → Convierte raw_proxies.txt → proxies.json
+│   ├── proxy_checker.py      → Verifica qué proxies funcionan
+│   ├── proxy_pool.py         → Gestiona pool: da uno válido, reporta bloqueos
+│   ├── proxy_format.py       → Adapta proxy para requests o Playwright
+│   ├── playwright_tools.py   → Inicia navegador con proxy, user-agent, contexto
+│   ├── raw_proxies.txt       → Proxies en bruto (copiados manualmente)
+│   ├── proxies.json          → Proxies válidos listos para usar
+│   ├── logging_config.py     → Formato, nivel y estilo de logs estructurados
+│   ├── user_agents.py        → Lista de user agents aleatorios
+│   └── proxy_scraper.py      → ❌ Inutilizado (raspador de proxies gratuitos)

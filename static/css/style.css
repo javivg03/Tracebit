@@ -1,12 +1,57 @@
-/* Custom Styles */
+/* Tipografía base */
 body {
   font-family: "Segoe UI", sans-serif;
+  background-color: #f8f9fa;
+  color: #212529;
 }
 
+/* Titulares de tarjetas */
 .card-title {
   text-transform: capitalize;
 }
 
+/* Mejorar visualización de resultados preformateados */
 pre {
   white-space: pre-wrap;
+  background-color: #f1f3f5;
+  padding: 1em;
+  border-radius: 0.5em;
+  font-size: 0.9em;
+  color: #333;
+}
+
+/* Estética tabla historial y resultados */
+table.table {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+table th {
+  background-color: #f1f1f1;
+  font-weight: 600;
+}
+
+table td, table th {
+  vertical-align: middle;
+}
+
+/* Botón de exportar y acciones */
+#boton-exportar-general {
+  min-width: 120px;
+}
+
+/* Spinner centrado con espacio */
+#loader {
+  margin-top: 20px;
+}
+
+/* Historial oculto por defecto */
+#historial-container {
+  transition: all 0.3s ease;
+}
+
+/* Mejora para encabezados */
+h1, h3 {
+  font-weight: 600;
 }

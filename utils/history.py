@@ -1,11 +1,37 @@
 import csv
-from datetime import datetime, timedelta
 import os
 import pandas as pd
+from datetime import datetime, timedelta
 
+# --- Configuración ---
 HISTORY_FILE = "exports/historial.csv"
+MODO_PRUEBAS = True  # ← Cambiar a False en producción
 
-def guardar_historial(plataforma, username, status):
+# --- Almacenamiento temporal en memoria para exportación bajo demanda ---
+_resultados_memoria = {}
+
+def guardar_resultado_temporal(tipo: str, username: str, resultado: dict | list[dict]):
+    """
+    Guarda un resultado en memoria temporal para exportación.
+    tipo puede ser: 'perfil', 'seguidores', 'seguidos', 'tweets', etc.
+    """
+    if tipo and username and resultado:
+        clave = f"{tipo}_{username}".lower()
+        _resultados_memoria[clave] = resultado
+
+def obtener_resultado_temporal(tipo: str, username: str) -> dict | list[dict] | None:
+    """
+    Recupera el resultado temporal guardado por tipo y username.
+    """
+    clave = f"{tipo}_{username}".lower()
+    return _resultados_memoria.get(clave)
+
+# --- Historial persistente en CSV/XLSX ---
+def guardar_historial(plataforma: str, username: str, status: str):
+    """
+    Guarda una línea en el historial CSV con fecha, plataforma, usuario y resultado.
+    También actualiza el archivo Excel automáticamente.
+    """
     existe = os.path.exists(HISTORY_FILE)
     with open(HISTORY_FILE, mode='a', newline='', encoding='utf-8') as archivo:
         writer = csv.writer(archivo)
@@ -20,23 +46,21 @@ def guardar_historial(plataforma, username, status):
     generar_historial_excel()
 
 def generar_historial_excel():
+    """
+    Convierte el historial CSV a un archivo Excel para descarga.
+    """
     try:
         if os.path.exists(HISTORY_FILE):
             df = pd.read_csv(HISTORY_FILE)
             df.to_excel("exports/historial.xlsx", index=False)
     except Exception as e:
         print(f"⚠️ Error generando historial.xlsx: {e}")
-MODO_PRUEBAS = True  # ← Poner en False en producción
+
+# --- Control de scrapings repetidos ---
 def fue_scrapeado_recentemente(username: str, plataforma: str, tipo: str = "Perfil", ventana_horas: int = 24,
                                requiere_cruzada: bool = False) -> bool:
-
     """
-    Devuelve True si ya se ha hecho scraping del mismo usuario/plataforma/tipo en las últimas N horas.
-
-    - Si MODO_PRUEBAS está activado, siempre devuelve False.
-    - Si requiere_cruzada=True, solo bloquea si ya se hizo scraping con búsqueda cruzada.
-    - Si requiere_cruzada=False, solo bloquea si ya se hizo scraping con cruzada también (scraping sin cruzada nunca bloquea a uno con cruzada).
-    - Ignora entradas con "Sin datos útiles" salvo si incluyen "búsqueda cruzada".
+    Comprueba si se ha hecho scraping del mismo usuario/plataforma/tipo en las últimas N horas.
     """
     if MODO_PRUEBAS or not os.path.exists(HISTORY_FILE):
         return False
@@ -61,16 +85,10 @@ def fue_scrapeado_recentemente(username: str, plataforma: str, tipo: str = "Perf
 
                         if requiere_cruzada:
                             if incluye_cruzada:
-                                return True  # ya se hizo cruzada
-                            else:
-                                continue  # no se hizo cruzada antes, así que permitimos
+                                return True
                         else:
-                            if incluye_cruzada:
-                                return True  # se hizo cruzada antes, bloquear también sin cruzada
-                            elif sin_datos:
-                                continue  # fue intento fallido sin datos → ignorar
-                            else:
-                                return True  # se hizo scraping simple con datos útiles
+                            if incluye_cruzada or not sin_datos:
+                                return True
                 except:
                     continue
 

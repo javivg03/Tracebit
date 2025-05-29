@@ -9,6 +9,7 @@ from scraping.tiktok.perfil import obtener_datos_perfil_tiktok
 from scraping.facebook.perfil import obtener_datos_perfil_facebook
 from scraping.x.perfil import obtener_datos_perfil_x
 from scraping.youtube.canal import obtener_datos_perfil_youtube
+from utils.history import guardar_resultado_temporal
 
 # Mapeo red → función
 SCRAPERS = {
@@ -20,6 +21,7 @@ SCRAPERS = {
     "youtube": obtener_datos_perfil_youtube,
 }
 
+
 @registrar_historial_async(plataforma="multired", tipo="perfil")
 async def flujo_scraping_multired(username: str, redes: list[str], habilitar_busqueda_web: bool = False) -> dict:
     redes_visitadas = set()
@@ -28,13 +30,15 @@ async def flujo_scraping_multired(username: str, redes: list[str], habilitar_bus
         try:
             datos = await SCRAPERS[red](username, redes_visitadas=redes_visitadas)
             if datos and (datos.get("email") or datos.get("telefono")):
-                return normalizar_datos_scraper(
+                resultado_normalizado = normalizar_datos_scraper(
                     nombre=datos.get("nombre"),
                     usuario=username,
                     email=datos.get("email"),
                     telefono=datos.get("telefono"),
                     origen=construir_origen(red, datos.get("email"), datos.get("telefono"))
                 )
+                guardar_resultado_temporal("perfil", username, resultado_normalizado)
+                return resultado_normalizado
         except Exception as e:
             logger.warning(f"⚠️ Error en scraper de {red} con {username}: {e}")
 
@@ -51,7 +55,6 @@ async def flujo_scraping_multired(username: str, redes: list[str], habilitar_bus
             origen="sin_resultado"
         )
 
-    # Búsqueda cruzada web como último recurso
     resultado = await buscar_contacto(
         username=username,
         nombre_completo=username,
@@ -60,13 +63,15 @@ async def flujo_scraping_multired(username: str, redes: list[str], habilitar_bus
     )
 
     if resultado:
-        return normalizar_datos_scraper(
+        resultado_normalizado = normalizar_datos_scraper(
             nombre=resultado.get("nombre") or username,
             usuario=username,
             email=resultado.get("email"),
             telefono=resultado.get("telefono"),
             origen=f"búsqueda cruzada ({resultado.get('origen')})"
         )
+        guardar_resultado_temporal("perfil", username, resultado_normalizado)
+        return resultado_normalizado
 
     logger.warning(f"❌ No se encontró ningún dato útil para {username} tras scraping + búsqueda cruzada.")
     return normalizar_datos_scraper(

@@ -1,16 +1,71 @@
 import os
 import csv
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.encoders import jsonable_encoder
 from celery.result import AsyncResult
 from celery_app import celery_app
 from services.logging_config import logger
 
+from utils.history import obtener_resultado_temporal
+from exports.exporter import exportar_resultados_a_excel, exportar_resultados_a_csv
+
 router_resultados = APIRouter()
 
+# ─────────────────────────────────────────────────────────────
+# 📁 Exportar resultados bajo demanda
+# ─────────────────────────────────────────────────────────────
 
-# 📦 Recuperar el estado y resultado de una tarea Celery
+@router_resultados.get("/exportar/perfil/{username}")
+def exportar_perfil(username: str, tipo: str = Query("excel", enum=["excel", "csv"])):
+    resultado = obtener_resultado_temporal("perfil", username)
+
+    if not resultado:
+        return JSONResponse(status_code=404, content={"error": "No hay datos disponibles para exportar"})
+
+    nombre_archivo = f"perfil_{username}"
+
+    if tipo == "csv":
+        ruta = exportar_resultados_a_csv([resultado], nombre_archivo)
+        mime_type = "text/csv"
+    else:
+        ruta = exportar_resultados_a_excel([resultado], nombre_archivo)
+        mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    if not ruta or not os.path.exists(ruta):
+        return JSONResponse(status_code=500, content={"error": "Error al generar el archivo de exportación"})
+
+    return FileResponse(path=ruta, filename=os.path.basename(ruta), media_type=mime_type)
+
+
+@router_resultados.get("/exportar/tarea/{tipo}/{username}")
+def exportar_tarea(tipo: str, username: str, formato: str = Query("excel", enum=["excel", "csv"])):
+    """
+    Exporta resultados de tareas (seguidores, seguidos, tweets...) bajo demanda.
+    """
+    datos = obtener_resultado_temporal(tipo, username)
+
+    if not datos:
+        return JSONResponse(status_code=404, content={"error": "No hay datos para exportar"})
+
+    nombre_archivo = f"{tipo}_{username}"
+
+    if formato == "csv":
+        ruta = exportar_resultados_a_csv(datos, nombre_archivo)
+        mime = "text/csv"
+    else:
+        ruta = exportar_resultados_a_excel(datos, nombre_archivo)
+        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    if not ruta or not os.path.exists(ruta):
+        return JSONResponse(status_code=500, content={"error": "Error al generar el archivo"})
+
+    return FileResponse(path=ruta, filename=os.path.basename(ruta), media_type=mime)
+
+# ─────────────────────────────────────────────────────────────
+# 📦 Resultado de tarea Celery
+# ─────────────────────────────────────────────────────────────
+
 @router_resultados.get("/resultado-tarea/{tarea_id}")
 def obtener_resultado_tarea(tarea_id: str):
     resultado = AsyncResult(tarea_id, app=celery_app)
@@ -36,8 +91,10 @@ def obtener_resultado_tarea(tarea_id: str):
         logger.exception("❌ Excepción al recuperar resultado:")
         return JSONResponse(status_code=500, content={"estado": "error", "mensaje": str(e)})
 
+# ─────────────────────────────────────────────────────────────
+# 🛑 Cancelar tarea Celery
+# ─────────────────────────────────────────────────────────────
 
-# 🛑 Cancelar una tarea en ejecución (si aún está activa)
 @router_resultados.post("/cancelar-tarea/{tarea_id}")
 def cancelar_tarea(tarea_id: str):
     resultado = AsyncResult(tarea_id, app=celery_app)
@@ -48,13 +105,14 @@ def cancelar_tarea(tarea_id: str):
 
     return {"estado": "no_cancelada", "mensaje": "No se pudo cancelar (ya finalizada o desconocida)."}
 
+# ─────────────────────────────────────────────────────────────
+# 📋 Historial de búsquedas (CSV + Excel)
+# ─────────────────────────────────────────────────────────────
 
-# 📋 Consultar el historial completo (como JSON para frontend)
 @router_resultados.get("/historial")
 def obtener_historial():
     try:
         historial_path = "exports/historial.csv"
-
         if not os.path.exists(historial_path):
             return JSONResponse(content=[], status_code=200)
 
@@ -68,23 +126,23 @@ def obtener_historial():
         return JSONResponse(content={"error": "Error al obtener historial"}, status_code=500)
 
 
-# 🧹 Borrar el historial y dejar solo el encabezado
 @router_resultados.delete("/historial")
 def borrar_historial():
     try:
         with open("exports/historial.csv", "w", encoding='utf-8') as archivo:
             archivo.write("fecha,plataforma,usuario,resultado\n")
-        # También borramos historial.xlsx si existe
+
         xlsx_path = "exports/historial.xlsx"
         if os.path.exists(xlsx_path):
             os.remove(xlsx_path)
+
         return {"mensaje": "Historial borrado"}
+
     except Exception as e:
         logger.error(f"❌ Error al borrar historial: {e}")
         return JSONResponse(content={"detalle": "Error al borrar historial"}, status_code=500)
 
 
-# 📥 Descargar el historial en CSV
 @router_resultados.get("/descargar/historial.csv")
 def descargar_historial_csv():
     path = "exports/historial.csv"
@@ -93,7 +151,6 @@ def descargar_historial_csv():
     return JSONResponse(status_code=404, content={"error": "Archivo CSV no encontrado"})
 
 
-# 📥 Descargar el historial en XLSX
 @router_resultados.get("/descargar/historial.xlsx")
 def descargar_historial_excel():
     path = "exports/historial.xlsx"
