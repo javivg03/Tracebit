@@ -23,6 +23,7 @@ SCRAPERS = {
 
 
 @registrar_historial_async(plataforma="multired", tipo="perfil")
+# 🔒 Búsqueda cruzada desactivada temporalmente
 async def flujo_scraping_multired(username: str, redes: list[str], habilitar_busqueda_web: bool = False) -> dict:
     redes_visitadas = set()
 
@@ -43,17 +44,16 @@ async def flujo_scraping_multired(username: str, redes: list[str], habilitar_bus
             logger.warning(f"⚠️ Error en scraper de {red} con {username}: {e}")
 
     logger.info("🔚 No se encontró contacto en redes sociales.")
-    logger.warning("⚠️ Evaluando búsqueda cruzada...")
 
-    if not habilitar_busqueda_web:
-        logger.info("⛔ Búsqueda web desactivada por configuración.")
-        return normalizar_datos_scraper(
-            nombre=None,
-            usuario=username,
-            email=None,
-            telefono=None,
-            origen="sin_resultado"
-        )
+    # if not habilitar_busqueda_web:
+    #    logger.info("⛔ Búsqueda web desactivada por configuración.")
+    #    return normalizar_datos_scraper(
+    #        nombre=None,
+    #        usuario=username,
+    #        email=None,
+    #        telefono=None,
+    #        origen="sin_resultado"
+    #    )
 
     resultado = await buscar_contacto(
         username=username,

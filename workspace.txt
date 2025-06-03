@@ -39,7 +39,7 @@
 │   │   └── seguidores.py
 │   ├── web/
 │   │   ├── __init__.py
-│   │   └── web_scraper.py    → Scraping de resultados web (StartPage/Bing)
+│   │   └── web_scraper.py    → (Desactivado) Scraping de resultados web (StartPage/Bing)
 │   ├── x/
 │   │   ├── __init__.py
 │   │   └── perfil.py
@@ -55,7 +55,8 @@
 ├── utils/                    → Funciones de apoyo general
 │   ├── __init__.py
 │   ├── flujo_scraping.py     → Orquesta scraping multired (perfil + fallback)
-│   ├── busqueda_cruzada.py   → Scraping web si no hay resultados directos
+│   ├── exportador_perfil.py  → Ejecuta scraping de perfil y exporta automáticamente al backend
+│   ├── busqueda_cruzada.py   → (Desactivado) Scraping web si no hay resultados directos
 │   ├── busqueda_username.py  → (Desactivado) Scraping de username entre redes
 │   ├── history.py            → Guarda y recupera historial de scraping
 │   ├── normalizador.py       → Limpia y estandariza resultados
@@ -84,7 +85,7 @@
 │   ├── celery_worker.py      → Arranca el worker de tareas
 │   ├── instagram.py          → Tareas: seguidores / seguidos
 │   ├── tiktok.py             → Tareas: seguidores / seguidos
-│   └── x.py             → Tareas: tweets
+│   └── x.py                  → Tareas: tweets
 │
 ├── services/                 → Infraestructura: proxies, navegador, logs
 │   ├── __init__.py

@@ -20,6 +20,7 @@ app = FastAPI(
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/download", StaticFiles(directory="exports"), name="exports")
 
 # ========== HTML RAÍZ ==========
 @app.get("/", response_class=FileResponse)

@@ -84,8 +84,32 @@ def obtener_resultado_tarea(tarea_id: str):
         if not datos or not isinstance(datos, dict) or "estado" not in datos:
             return {"estado": "sin_datos", "mensaje": "La tarea no devolvió información válida"}
 
-        logger.info(f"✅ Resultado obtenido correctamente de la tarea {tarea_id}")
-        return JSONResponse(content=jsonable_encoder(datos))
+        if datos["estado"] != "ok" or "data" not in datos:
+            return datos  # Devuelve tal cual si hubo fallo o no hay resultados
+
+        lista_datos = datos["data"]
+        if not lista_datos:
+            return {"estado": "error", "mensaje": "No se encontraron datos en el resultado."}
+
+        username_detectado = lista_datos[0].get("usuario", "usuario") or "usuario"
+        tipo_detectado = (
+            "seguidores" if "seguidores" in tarea_id else
+            "seguidos" if "seguidos" in tarea_id else
+            "tweets" if "tweets" in tarea_id else
+            "tarea"
+        )
+
+        nombre_archivo = f"{tipo_detectado}_{username_detectado}"
+
+        excel_path = exportar_resultados_a_excel(lista_datos, nombre_archivo)
+        csv_path = exportar_resultados_a_csv(lista_datos, nombre_archivo)
+
+        return {
+            "estado": "ok",
+            "data": lista_datos,
+            "excel_path": f"/download/{nombre_archivo}.xlsx" if excel_path else None,
+            "csv_path": f"/download/{nombre_archivo}.csv" if csv_path else None
+        }
 
     except Exception as e:
         logger.exception("❌ Excepción al recuperar resultado:")

@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-
-from tasks.tiktok import scrape_followers_info_tiktok_task, scrape_followees_info_tiktok_task
 from services.logging_config import logger
 from utils.flujo_scraping import flujo_scraping_multired
+from utils.exportador_perfil import ejecutar_scraping_y_exportar
+from tasks.tiktok import scrape_followers_info_tiktok_task, scrape_followees_info_tiktok_task
 
 router_tiktok = APIRouter(prefix="/tiktok")
 
@@ -28,13 +28,12 @@ class SeguidosInput(BaseModel):
 async def tiktok_scraper(data: PerfilInput):
     logger.info(f"📥 Endpoint recibido: Scraping de perfil TikTok para {data.username}")
 
-    resultado = await flujo_scraping_multired(
+    return await ejecutar_scraping_y_exportar(
         username=data.username,
         redes=["tiktok", "instagram"],
+        flujo_scraping=flujo_scraping_multired,
         habilitar_busqueda_web=data.habilitar_busqueda_web
     )
-
-    return resultado
 
 @router_tiktok.post("/seguidores")
 def lanzar_scraping_info_seguidores_tiktok(data: SeguidoresInput):

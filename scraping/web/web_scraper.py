@@ -8,6 +8,10 @@ from utils.validator import extraer_emails, extraer_telefonos
 from utils.normalizador import normalizar_datos_scraper, construir_origen
 from services.logging_config import logger
 
+# 🚫 MODULO DESACTIVADO TEMPORALMENTE
+# Este módulo de scraping web se conserva para futuras versiones,
+# pero actualmente no se expone al frontend por motivos de bloqueo de StartPage/Bing.
+
 
 def analizar_url_contacto(url: str, username: str, origen: str = "web", timeout: int = 6) -> dict | None:
     try:
