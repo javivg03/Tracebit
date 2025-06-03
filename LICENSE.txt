@@ -1,0 +1,36 @@
+Licencia de uso – Tracebit
+
+Copyright (c) 2025 Javier Villaseñor García
+
+Este software se proporciona de forma gratuita para su uso personal, académico o con fines educativos. Se permite su uso, modificación y redistribución únicamente bajo las siguientes condiciones:
+
+1. **Uso no comercial permitido:**
+   - El código puede utilizarse libremente para proyectos personales, educativos o pruebas técnicas.
+   - Queda estrictamente prohibido su uso con fines comerciales o lucrativos sin la autorización expresa y por escrito del autor.
+
+2. **Reconocimiento obligatorio:**
+   - Debe mantenerse siempre visible el nombre del autor original en el código y en cualquier redistribución, fork o proyecto derivado:
+     > Autor original: Javier Villaseñor García
+
+3. **Modificaciones y forks:**
+   - Puedes modificar este código para tus propios fines, siempre que:
+     - No lo uses comercialmente.
+     - No elimines ni ocultes el reconocimiento original.
+
+4. **Renuncia de garantías:**
+   - El software se proporciona "tal cual", sin ningún tipo de garantía expresa o implícita.
+   - El autor no se hace responsable de posibles daños, pérdidas de datos, bloqueos de cuentas o cualquier consecuencia derivada del uso de este software.
+
+5. **Para uso comercial:**
+   - Si deseas utilizar este proyecto como parte de un servicio, producto o herramienta con fines comerciales, debes contactar previamente con el autor para obtener una licencia específica o acuerdo.
+
+---
+
+Esta licencia se aplica a todos los archivos incluidos en este repositorio: código fuente, documentación, scripts y ejemplos.  
+Este acuerdo se rige por la legislación española y europea aplicable en materia de propiedad intelectual y uso de software.
+
+Contacto: javiervg0300@gmail.com
+
+---
+
+Al utilizar este software, aceptas cumplir con los términos descritos anteriormente.

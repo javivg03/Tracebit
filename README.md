@@ -114,20 +114,11 @@ docker-compose up --build
 
 ## ⚖️ Licencia
 
-Este proyecto está licenciado bajo la licencia **MIT**. Puedes usar, modificar y distribuir el código con fines personales o educativos.  
-Se prohíbe expresamente el uso con fines comerciales sin autorización previa.
+Este proyecto está licenciado bajo una **licencia personalizada de uso no comercial**.
 
-```text
-MIT License
+Puedes utilizar, modificar y redistribuir este software con fines personales, educativos o académicos, pero se prohíbe el uso comercial sin autorización expresa.
 
-Copyright (c) 2025 Javier Villaseñor
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction...
-
-(archivo completo en LICENSE)
-```
+Consulta el archivo [LICENSE.txt](./LICENSE.txt) para ver los términos completos.
 
 ---
 
