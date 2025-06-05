@@ -4,7 +4,7 @@ from services.proxy_pool import ProxyPool
 from services.logging_config import logger
 
 # 🔁 Cambia esto cuando quieras activar/desactivar proxies
-usar_proxies = False  # ← ACTIVA o DESACTIVA el uso de proxies
+usar_proxies = True  # ← ACTIVA o DESACTIVA el uso de proxies
 
 async def iniciar_browser_con_proxy(state_path: str = None):
     proxy = None

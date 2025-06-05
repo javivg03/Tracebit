@@ -99,3 +99,6 @@
 │   ├── logging_config.py     → Formato, nivel y estilo de logs estructurados
 │   ├── user_agents.py        → Lista de user agents aleatorios
 │   └── proxy_scraper.py      → ❌ Inutilizado (raspador de proxies gratuitos)
+│
+├── logs/
+│   └── app.log

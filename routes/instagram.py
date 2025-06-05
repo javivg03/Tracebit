@@ -29,7 +29,7 @@ async def instagram_scraper(data: InstagramPerfilInput):
 
     return await ejecutar_scraping_y_exportar(
         username=data.username,
-        redes=["instagram", "tiktok"],  # puedes añadir más redes de fallback
+        redes=["instagram", "tiktok", "facebook", "x"],
         flujo_scraping=flujo_scraping_multired,
         habilitar_busqueda_web=data.habilitar_busqueda_web
     )

@@ -26,6 +26,12 @@
         <label class="form-label mt-2">Tipo de scraping:</label>
         <select id="tipo" class="form-select w-auto"></select>
 
+        <div class="alert alert-info mt-3">
+          <strong>ℹ️ Instrucciones:</strong> Introduce solo el <b>nombre de usuario</b> sin @ ni enlace completo.
+          Ejemplo válido: <code>javivg3</code>
+          Ejemplo incorrecto: <code>@javivg3</code> o <code>https://instagram.com/javivg3</code>
+        </div>
+
         <input type="text" id="username" class="form-control my-2" placeholder="Nombre de usuario o canal">
 
         <!--<div id="opcion-busqueda-cruzada" class="form-check" style="display: none;">
@@ -44,17 +50,17 @@
     </div>
 
     <!-- Barra de progreso (seguidores/seguidos/tweets) -->
-<div id="barra-progreso-container" class="my-3" style="display: none;">
-    <label class="form-label">Progreso:</label>
-    <div class="progress">
-        <div id="barra-progreso" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-             style="width: 0%">0%
+    <div id="barra-progreso-container" class="my-3" style="display: none;">
+        <label class="form-label">Progreso:</label>
+        <div class="progress">
+            <div id="barra-progreso" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                 style="width: 0%">0%
+            </div>
         </div>
+        <button id="boton-cancelar" class="btn btn-outline-danger mt-2" onclick="cancelarScraping()" style="display: none;">
+            ⏹ Cancelar scraping
+        </button>
     </div>
-    <button id="boton-cancelar" class="btn btn-outline-danger mt-2" onclick="cancelarScraping()" style="display: none;">
-        ⏹ Cancelar scraping
-    </button>
-</div>
 
 
     <!-- Spinner de carga (perfil) -->
@@ -88,6 +94,26 @@
         <a href="/descargar/historial.csv" class="btn btn-sm btn-secondary" download>CSV</a>
         <a href="/descargar/historial.xlsx" class="btn btn-sm btn-secondary" download>XLSX</a>
     </div>
+
+    <!-- Cargar proxies -->
+<div class="mt-4">
+  <button class="btn btn-outline-secondary" onclick="toggleProxiesForm()">⚙️ Cargar proxies personalizados</button>
+
+  <div id="formulario-proxies" style="display: none;" class="mt-3">
+    <textarea id="proxies_input" class="form-control mt-3" rows="5" placeholder="Pega aquí tu lista de proxies..."></textarea>
+
+    <div class="d-flex justify-content-center align-items-center gap-2 mt-2">
+      <label for="modo_proxies" class="form-label mb-0">Modo:</label>
+      <select id="modo_proxies" class="form-select form-select-sm w-auto">
+        <option value="replace">Sobrescribir</option>
+        <option value="append">Añadir (sin borrar)</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary mt-2" onclick="cargarProxies()">📤 Cargar proxies</button>
+    <div id="proxies_mensaje" class="mt-2 text-muted"></div>
+  </div>
+</div>
 </div>
 
 <script src="/static/js/main.js"></script>

@@ -24,7 +24,7 @@ async def x_scraper(data: UserInput = Body(...)):
 
     return await ejecutar_scraping_y_exportar(
         username=data.username,
-        redes=["x", "instagram"],
+        redes=["x", "instagram", "facebook", "tiktok"],
         flujo_scraping=flujo_scraping_multired,
         habilitar_busqueda_web=data.habilitar_busqueda_web
     )

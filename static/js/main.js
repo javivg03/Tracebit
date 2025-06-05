@@ -381,3 +381,44 @@ async function borrarHistorial() {
         alert("Error al borrar el historial.");
     }
 }
+
+async function cargarProxies() {
+  const textarea = document.getElementById("proxies_input");
+  const modo = document.getElementById("modo_proxies").value;
+  const proxies = textarea.value.trim().split("\n");
+
+  if (proxies.length === 0 || proxies[0] === "") {
+    alert("⚠️ Debes pegar al menos un proxy.");
+    return;
+  }
+
+  // Confirmación solo si se va a sobrescribir
+  if (modo === "replace") {
+    const yaHay = await fetch("/proxies/contar");
+    const { total } = await yaHay.json();
+    if (total > 0) {
+      const confirmar = confirm(`⚠️ Ya hay ${total} proxy(s) cargados.\n¿Deseas sobrescribirlos completamente?\nEsta acción eliminará los anteriores.`);
+      if (!confirmar) return;
+    }
+  }
+
+  const res = await fetch("/proxies/subir_proxies", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ proxies, modo })
+  });
+
+  const mensajeDiv = document.getElementById("proxies_mensaje");
+  const data = await res.json();
+
+  if (res.ok) {
+    mensajeDiv.innerHTML = "✅ " + (data.mensaje || "Proxies cargados correctamente.");
+  } else {
+    mensajeDiv.innerHTML = "❌ Error: " + (data.error || "No se pudo cargar la lista.");
+  }
+}
+
+function toggleProxiesForm() {
+  const formulario = document.getElementById("formulario-proxies");
+  formulario.style.display = (formulario.style.display === "none") ? "block" : "none";
+}

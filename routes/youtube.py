@@ -20,7 +20,7 @@ async def youtube_scraper(data: UserInput = Body(...)):
 
     return await ejecutar_scraping_y_exportar(
         username=data.username,
-        redes=["youtube", "instagram"],
+        redes=["youtube", "instagram", "facebook", "tiktok", "x"],
         flujo_scraping=flujo_scraping_multired,
         habilitar_busqueda_web=data.habilitar_busqueda_web
     )

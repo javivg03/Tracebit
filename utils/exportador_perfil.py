@@ -1,5 +1,3 @@
-# utils/exportador_perfil.py
-
 from exports.exporter import exportar_resultados_a_excel, exportar_resultados_a_csv
 from services.logging_config import logger
 from typing import Callable

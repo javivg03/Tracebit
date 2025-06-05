@@ -30,7 +30,7 @@ async def tiktok_scraper(data: PerfilInput):
 
     return await ejecutar_scraping_y_exportar(
         username=data.username,
-        redes=["tiktok", "instagram"],
+        redes=["tiktok", "instagram", "facebook", "x"],
         flujo_scraping=flujo_scraping_multired,
         habilitar_busqueda_web=data.habilitar_busqueda_web
     )

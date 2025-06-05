@@ -9,8 +9,8 @@ from routes.youtube import router_youtube
 from routes.x import router_x
 from routes.facebook import router_facebook
 from routes.web import router_web
-
 from routes.resultados import router_resultados
+from routes.proxies import router_proxies
 
 # ========== FASTAPI APP SETUP ==========
 app = FastAPI(
@@ -36,4 +36,4 @@ app.include_router(router_x)
 app.include_router(router_facebook)
 app.include_router(router_web)
 app.include_router(router_resultados)
-
+app.include_router(router_proxies)

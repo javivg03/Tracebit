@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 # --- Configuración ---
 HISTORY_FILE = "exports/historial.csv"
-MODO_PRUEBAS = True  # ← Cambiar a False en producción
+MODO_PRUEBAS = False  # ← Cambiar a False en producción
 
 # --- Almacenamiento temporal en memoria para exportación bajo demanda ---
 _resultados_memoria = {}

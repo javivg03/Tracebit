@@ -6,7 +6,7 @@ from services.proxy_pool import ProxyPool
 from utils.flujo_scraping import flujo_scraping_multired
 
 
-async def obtener_seguidores(username: str, max_seguidores: int = 3) -> list[str]:
+async def obtener_seguidores(username: str, max_seguidores: int = 100) -> list[str]:
     seguidores = []
     try:
         playwright, browser, context, proxy = await iniciar_browser_con_proxy("state_instagram.json")
@@ -79,7 +79,7 @@ async def obtener_seguidores(username: str, max_seguidores: int = 3) -> list[str
     return seguidores
 
 
-async def scrape_followers_info(username: str, max_seguidores: int = 3, timeout_por_seguidor: int = 30) -> list[dict]:
+async def scrape_followers_info(username: str, max_seguidores: int = 100, timeout_por_seguidor: int = 30) -> list[dict]:
     resultados = []
     seguidores = await obtener_seguidores(username, max_seguidores)
     if not seguidores:
@@ -90,7 +90,7 @@ async def scrape_followers_info(username: str, max_seguidores: int = 3, timeout_
         logger.info(f"🔍 ({i+1}/{len(seguidores)}) Procesando seguidor: {seguidor}")
         try:
             datos = await asyncio.wait_for(
-                flujo_scraping_multired(seguidor, redes=["instagram"], habilitar_busqueda_web=False),
+                flujo_scraping_multired(seguidor, redes=["instagram", "tiktok", "facebook", "x", "youtube", "telegram"], habilitar_busqueda_web=False),
                 timeout=timeout_por_seguidor
             )
             resultados.append(datos)
