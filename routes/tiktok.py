@@ -11,11 +11,9 @@ router_tiktok = APIRouter(prefix="/tiktok")
 
 class PerfilInput(BaseModel):
     username: str
-    habilitar_busqueda_web: bool = False
 
 class SeguidoresInput(BaseModel):
     username: str
-    habilitar_busqueda_web: bool = False
     max_seguidores: int = 10
 
 class SeguidosInput(BaseModel):
@@ -32,7 +30,6 @@ async def tiktok_scraper(data: PerfilInput):
         username=data.username,
         redes=["tiktok", "instagram", "facebook", "x"],
         flujo_scraping=flujo_scraping_multired,
-        habilitar_busqueda_web=data.habilitar_busqueda_web
     )
 
 @router_tiktok.post("/seguidores")

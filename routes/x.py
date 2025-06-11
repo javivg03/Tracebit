@@ -11,7 +11,6 @@ router_x = APIRouter(prefix="/x")
 
 class UserInput(BaseModel):
     username: str
-    habilitar_busqueda_web: bool = False
 
 class TweetsRequest(BaseModel):
     max_tweets: int = 10
@@ -26,7 +25,6 @@ async def x_scraper(data: UserInput = Body(...)):
         username=data.username,
         redes=["x", "instagram", "facebook", "tiktok"],
         flujo_scraping=flujo_scraping_multired,
-        habilitar_busqueda_web=data.habilitar_busqueda_web
     )
 
 @router_x.post("/tweets")

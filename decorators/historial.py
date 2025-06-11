@@ -14,12 +14,17 @@ def registrar_historial(plataforma: str, tipo: str):
             try:
                 resultado = func(*args, **kwargs)
 
+                archivo = resultado.get("archivo", "") if isinstance(resultado, dict) else ""
+
                 if isinstance(resultado, dict) and resultado.get("estado") == "ok":
                     n = len(resultado.get("data", []))
-                    guardar_historial(plataforma, username, f"✅ {tipo.capitalize()} extraídos ({n} resultados)")
+                    mensaje = f"✅ {tipo.capitalize()} extraídos ({n} resultados)"
+                elif isinstance(resultado, dict):
+                    mensaje = resultado.get("mensaje", f"⚠️ {tipo.capitalize()}: sin datos")
                 else:
-                    guardar_historial(plataforma, username, f"⚠️ {tipo.capitalize()}: sin datos")
+                    mensaje = f"⚠️ {tipo.capitalize()}: sin datos"
 
+                guardar_historial(plataforma, username, mensaje, archivo)
                 return resultado
 
             except Exception as e:
@@ -51,20 +56,21 @@ def registrar_historial_async(plataforma: str = "multired", tipo: str = "perfil"
                     guardar_historial(plataforma, username, f"❌ {tipo.capitalize()}: resultado inválido")
                     return resultado
 
+                archivo = resultado.get("archivo", "")
                 origen = resultado.get("origen", "desconocido")
                 email = resultado.get("email")
                 telefono = resultado.get("telefono")
 
                 if email or telefono:
                     if "búsqueda cruzada" in origen:
-                        guardar_historial(plataforma, username, f"📡 Contacto encontrado vía {origen}")
+                        guardar_historial(plataforma, username, f"📡 Contacto encontrado vía {origen}", archivo)
                     else:
-                        guardar_historial(plataforma, username, f"✅ Contacto encontrado ({origen})")
+                        guardar_historial(plataforma, username, f"✅ Contacto encontrado ({origen})", archivo)
                 else:
                     if "búsqueda cruzada" in origen:
-                        guardar_historial(plataforma, username, f"❌ Sin datos útiles (ni en búsqueda cruzada)")
+                        guardar_historial(plataforma, username, f"❌ Sin datos útiles (ni en búsqueda cruzada)", archivo)
                     else:
-                        guardar_historial(plataforma, username, f"⚠️ Sin datos útiles en scraping multired")
+                        guardar_historial(plataforma, username, f"⚠️ Sin datos útiles en scraping multired", archivo)
 
                 return resultado
 

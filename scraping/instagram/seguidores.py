@@ -90,7 +90,7 @@ async def scrape_followers_info(username: str, max_seguidores: int = 100, timeou
         logger.info(f"🔍 ({i+1}/{len(seguidores)}) Procesando seguidor: {seguidor}")
         try:
             datos = await asyncio.wait_for(
-                flujo_scraping_multired(seguidor, redes=["instagram", "tiktok", "facebook", "x", "youtube", "telegram"], habilitar_busqueda_web=False),
+                flujo_scraping_multired(seguidor, redes=["instagram"]),
                 timeout=timeout_por_seguidor
             )
             resultados.append(datos)

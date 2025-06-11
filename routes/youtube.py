@@ -10,7 +10,6 @@ router_youtube = APIRouter(prefix="/youtube")
 
 class UserInput(BaseModel):
     username: str
-    habilitar_busqueda_web: bool = False
 
 # ========== Endpoints ==========
 
@@ -22,5 +21,4 @@ async def youtube_scraper(data: UserInput = Body(...)):
         username=data.username,
         redes=["youtube", "instagram", "facebook", "tiktok", "x"],
         flujo_scraping=flujo_scraping_multired,
-        habilitar_busqueda_web=data.habilitar_busqueda_web
     )

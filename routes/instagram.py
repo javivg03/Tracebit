@@ -11,7 +11,6 @@ router_instagram = APIRouter(prefix="/instagram")
 
 class InstagramPerfilInput(BaseModel):
     username: str
-    habilitar_busqueda_web: bool = False
 
 class SeguidoresInput(BaseModel):
     username: str
@@ -31,7 +30,6 @@ async def instagram_scraper(data: InstagramPerfilInput):
         username=data.username,
         redes=["instagram", "tiktok", "facebook", "x"],
         flujo_scraping=flujo_scraping_multired,
-        habilitar_busqueda_web=data.habilitar_busqueda_web
     )
 
 @router_instagram.post("/seguidores")

@@ -270,7 +270,6 @@ function mostrarOpciones() {
   const tipo = document.getElementById("tipo").value;
   const plataforma = document.getElementById("plataforma").value;
   const mostrarCheckbox = (tipo === "perfil" || tipo === "canal") && plataforma !== "web";
-  document.getElementById("opcion-busqueda-cruzada").style.display = mostrarCheckbox ? "block" : "none";
 }
 
 // Configura los selectores al cargar la página
@@ -358,15 +357,29 @@ function generarTablaHistorial(historial) {
         return "<p>No hay registros de historial.</p>";
     }
 
-    let tabla = "<table class='table table-bordered table-sm'><thead><tr><th>📅 Fecha</th><th>📱 Plataforma</th><th>👤 Usuario</th><th>✅ Resultado</th></tr></thead><tbody>";
+    let tabla = "<table class='table table-bordered table-sm'>";
+    tabla += "<thead><tr>";
+    tabla += "<th>📅 Fecha</th><th>📱 Plataforma</th><th>👤 Usuario</th><th>✅ Resultado</th><th>📥 Archivo</th>";
+    tabla += "</tr></thead><tbody>";
+
     historial.forEach(registro => {
-        tabla += `<tr>
-            <td>${registro.fecha}</td>
-            <td>${registro.plataforma}</td>
-            <td>${registro.usuario}</td>
-            <td>${registro.resultado}</td>
-        </tr>`;
+        tabla += "<tr>";
+        tabla += `<td>${registro.fecha}</td>`;
+        tabla += `<td>${registro.plataforma}</td>`;
+        tabla += `<td>${registro.usuario}</td>`;
+        tabla += `<td>${registro.resultado}</td>`;
+
+        if (registro.archivo && registro.archivo.trim() !== "") {
+            const extension = registro.archivo.endsWith(".csv") ? "CSV" :
+                              registro.archivo.endsWith(".xlsx") ? "Excel" : "Archivo";
+            tabla += `<td><button class="btn btn-sm btn-primary" onclick="window.open('/descargar/${registro.archivo}', '_blank')">Descargar ${extension}</button></td>`;
+        } else {
+            tabla += "<td>—</td>";
+        }
+
+        tabla += "</tr>";
     });
+
     tabla += "</tbody></table>";
     return tabla;
 }

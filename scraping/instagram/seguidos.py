@@ -10,7 +10,6 @@ async def obtener_seguidos(username: str, max_seguidos: int = 3) -> list[str]:
     seguidos = []
     try:
         playwright, browser, context, proxy = await iniciar_browser_con_proxy("state_instagram.json")
-        logger.info(f"🧩 Proxy usado para seguidos: {proxy}")
         page = await context.new_page()
 
         logger.info("🌐 Accediendo al perfil...")
@@ -78,7 +77,6 @@ async def obtener_seguidos(username: str, max_seguidos: int = 3) -> list[str]:
 
     return seguidos
 
-
 async def scrape_followees_info(username: str, max_seguidos: int = 3, timeout_por_usuario: int = 30) -> list[dict]:
     resultados = []
 
@@ -92,7 +90,7 @@ async def scrape_followees_info(username: str, max_seguidos: int = 3, timeout_po
         logger.info(f"🔍 ({i+1}/{len(seguidos)}) Scrapeando seguido: {usuario}")
         try:
             datos = await asyncio.wait_for(
-                flujo_scraping_multired(usuario, redes=["instagram", "tiktok", "facebook", "x", "youtube", "telegram"], habilitar_busqueda_web=False),
+                flujo_scraping_multired(usuario, redes=["instagram"]),
                 timeout=timeout_por_usuario
             )
             resultados.append(datos)

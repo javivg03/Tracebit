@@ -50,8 +50,9 @@ def guardar_proxies_formateados(lista_proxies: list[str], modo: str = "replace")
         proxy = {
             "ip": partes[0],
             "port": partes[1],
-            "user": partes[2],
-            "pass": partes[3]
+            "username": partes[2],
+            "password": partes[3],
+            "plataformas_bloqueadas": []
         }
         proxies_json.append(proxy)
 

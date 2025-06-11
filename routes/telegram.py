@@ -9,7 +9,6 @@ router_telegram = APIRouter(prefix="/telegram")
 # ========== Pydantic Models ==========
 class UserInput(BaseModel):
     username: str
-    habilitar_busqueda_web: bool = False
 
 # ========== Endpoints ==========
 @router_telegram.post("/canal")
@@ -20,5 +19,4 @@ async def telegram_scraper(data: UserInput = Body(...)):
         username=data.username,
         redes=["telegram", "instagram", "facebook", "tiktok", "x"],
         flujo_scraping=flujo_scraping_multired,
-        habilitar_busqueda_web=data.habilitar_busqueda_web
     )

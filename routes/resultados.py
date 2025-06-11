@@ -1,6 +1,6 @@
 import os
 import csv
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.encoders import jsonable_encoder
 from celery.result import AsyncResult
@@ -154,7 +154,7 @@ def obtener_historial():
 def borrar_historial():
     try:
         with open("exports/historial.csv", "w", encoding='utf-8') as archivo:
-            archivo.write("fecha,plataforma,usuario,resultado\n")
+            archivo.write("fecha,plataforma,usuario,resultado,archivo\n")
 
         xlsx_path = "exports/historial.xlsx"
         if os.path.exists(xlsx_path):
@@ -181,3 +181,12 @@ def descargar_historial_excel():
     if os.path.exists(path):
         return FileResponse(path, filename="historial.xlsx", media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     return JSONResponse(status_code=404, content={"error": "Archivo Excel no encontrado"})
+
+
+@router_resultados.get("/descargar/{nombre_archivo}")
+async def descargar_archivo(nombre_archivo: str):
+    ruta = f"exports/{nombre_archivo}"
+    if os.path.exists(ruta):
+        return FileResponse(path=ruta, filename=nombre_archivo, media_type='application/octet-stream')
+    else:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
