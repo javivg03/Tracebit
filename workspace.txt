@@ -13,7 +13,7 @@
 ├── state_youtube.json        → Estado de sesión Playwright para YouTube
 ├── state_x.json              → Estado de sesión Playwright para X (Twitter)
 │
-├── tests/                    → Carpeta de tests (vacía o en desarrollo)
+├── tests/                    → Carpeta de tests
 │   └──
 │
 ├── decorators/               → Decoradores reutilizables
@@ -98,7 +98,7 @@
 │   ├── proxies.json          → Proxies válidos listos para usar
 │   ├── logging_config.py     → Formato, nivel y estilo de logs estructurados
 │   ├── user_agents.py        → Lista de user agents aleatorios
-│   └── proxy_scraper.py      → ❌ Inutilizado (raspador de proxies gratuitos)
+│   └── proxy_scraper.py      → Inutilizado (raspador de proxies gratuitos)
 │
 ├── logs/
 │   └── app.log

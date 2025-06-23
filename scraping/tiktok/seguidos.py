@@ -15,7 +15,6 @@ async def obtener_seguidos_tiktok(username: str, max_seguidos: int = 3):
             logger.warning("⚠️ No se pudo iniciar navegador con proxy para TikTok.")
             return []
 
-        logger.info(f"🧩 Proxy usado para seguidos TikTok: {proxy}")
         page = await context.new_page()
 
         try:

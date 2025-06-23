@@ -10,7 +10,6 @@ async def obtener_seguidores(username: str, max_seguidores: int = 100) -> list[s
     seguidores = []
     try:
         playwright, browser, context, proxy = await iniciar_browser_con_proxy("state_instagram.json")
-        logger.info(f"🧩 Proxy usado para seguidores: {proxy}")
         page = await context.new_page()
 
         logger.info("🌐 Accediendo al perfil...")

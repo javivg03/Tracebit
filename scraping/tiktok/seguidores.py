@@ -15,7 +15,6 @@ async def obtener_seguidores_tiktok(username: str, max_seguidores: int = 3):
             logger.warning("⚠️ No se pudo iniciar navegador con proxy para TikTok.")
             return []
 
-        logger.info(f"🧩 Proxy usado para seguidores TikTok: {proxy}")
         page = await context.new_page()
 
         try:

@@ -74,10 +74,17 @@ async function scrapear() {
       const json = await res.json();
       document.getElementById("loader").style.display = "none";
 
-      if (!res.ok) {
+    if (!res.ok) {
+      // Si el backend devuelve {"estado": "duplicado"}
+      if (json.estado === "duplicado") {
+        document.getElementById("resultado").innerHTML = `⚠️ ${json.mensaje || "Este perfil ya fue scrapeado recientemente."}`;
+      } else {
         document.getElementById("resultado").innerHTML = `❌ ${json.error || "Error al scrapear."}`;
-        return;
       }
+      document.getElementById("resultado").style.display = "block";
+      return;
+    }
+
 
       mostrarResultado(json);
       activarDescarga(json.excel_path, json.csv_path);
@@ -107,8 +114,24 @@ async function scrapear() {
         body: JSON.stringify(payload)
       });
 
-      const { tarea_id } = await tareaRes.json();
-      if (!tarea_id) throw new Error("Tarea no iniciada");
+    const json = await tareaRes.json();
+
+    if (!tareaRes.ok) {
+      if (json.estado === "duplicado") {
+        document.getElementById("resultado").innerHTML = `⚠️ ${json.mensaje || "Ya se hizo esta tarea recientemente."}`;
+      } else {
+        document.getElementById("resultado").innerHTML = `❌ ${json.error || "Error al iniciar tarea."}`;
+      }
+      document.getElementById("resultado").style.display = "block";
+      return;
+    }
+
+    const { tarea_id } = json;
+    if (!tarea_id) {
+      document.getElementById("resultado").innerHTML = "❌ No se recibió ID de tarea.";
+      document.getElementById("resultado").style.display = "block";
+      return;
+    }
 
       tareaActivaId = tarea_id;
       document.getElementById("boton-cancelar").style.display = "inline-block";

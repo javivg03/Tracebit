@@ -19,7 +19,6 @@ SCRAPERS = {
     "youtube": obtener_datos_perfil_youtube,
 }
 
-
 async def flujo_scraping_multired(username: str, redes: list[str]) -> dict:
     redes_visitadas = set()
 

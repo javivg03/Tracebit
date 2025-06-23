@@ -1,28 +1,25 @@
 from exports.exporter import exportar_resultados_a_excel, exportar_resultados_a_csv
 from services.logging_config import logger
-from utils.history import guardar_historial
+from utils.history import guardar_historial, fue_scrapeado_recentemente
 from typing import Callable
+from fastapi.responses import JSONResponse
 
 async def ejecutar_scraping_y_exportar(
     username: str,
     redes: list[str],
     flujo_scraping: Callable,
 ) -> dict:
-    """
-    Ejecuta un scraping de perfil multired + genera archivos Excel y CSV de forma automática.
-
-    Args:
-        username (str): El nombre de usuario a scrapear.
-        redes (list[str]): Lista de redes por las que pasará el flujo multired.
-        flujo_scraping (Callable): La función de scraping multired (como flujo_scraping_multired).
-
-    Returns:
-        dict: Resultado del scraping extendido con 'excel_path' y 'csv_path'.
-    """
-    resultado = await flujo_scraping(
-        username=username,
-        redes=redes,
-    )
+    # ✅ Comprobar duplicado ANTES de lanzar scraping
+    if fue_scrapeado_recentemente(username=username, plataforma="multired", tipo="perfil"):
+        logger.warning(f"🚫 Perfil {username} ya fue scrapeado recientemente.")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "estado": "duplicado",
+                "mensaje": "Este perfil ya fue scrapeado hace menos de 24h."
+            }
+        )
+    resultado = await flujo_scraping(username=username, redes=redes)
 
     if not resultado:
         logger.warning(f"❌ No se encontraron datos válidos para {username}")
@@ -30,7 +27,8 @@ async def ejecutar_scraping_y_exportar(
             plataforma="multired",
             username=username,
             status="sin datos útiles",
-            archivo=""
+            archivo="",
+            tipo="perfil"
         )
         return {"error": "No se encontró ningún dato válido."}
 
@@ -44,7 +42,8 @@ async def ejecutar_scraping_y_exportar(
             plataforma="multired",
             username=username,
             status="error en exportación",
-            archivo=""
+            archivo="",
+            tipo="perfil"
         )
         return {
             **resultado,
@@ -56,7 +55,8 @@ async def ejecutar_scraping_y_exportar(
         plataforma="multired",
         username=username,
         status="perfil extraído correctamente",
-        archivo=f"{nombre_archivo}.xlsx"
+        archivo=f"{nombre_archivo}.xlsx",
+        tipo="perfil"
     )
 
     return {
